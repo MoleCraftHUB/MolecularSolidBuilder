@@ -1,0 +1,3 @@
+pair_style      reax/c NULL safezone 8.0 mincap 1000
+pair_coeff      * * ffield.reax C H O
+

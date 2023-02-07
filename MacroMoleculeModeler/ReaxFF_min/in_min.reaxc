@@ -1,0 +1,29 @@
+units			real
+boundary        p p p
+neighbor		2.5 bin
+neigh_modify	every 1 delay 0 check yes
+
+atom_style		charge
+read_data		molecules.data
+include			mass.data
+include         pair.data
+
+compute			reax all pair reax/c
+fix             1 all qeq/reax 1 0.0 10.0 1.0e-6 reax/c
+
+timestep		0.1
+thermo			100
+thermo_style 	custom step temp pe press pxx pyy pzz lx ly lz
+
+dump            dp all custom 1 min.dump id element type x y z q vx vy vz
+include			dump_elem.data
+thermo_style    custom step temp pe ke etotal density vol press pzz pxx pyy pxz pxy pyz lx ly lz
+
+variable        energy equal pe
+
+################# ENERGY MINIZATION ###################################
+min_style       cg
+minimize        1.0e-10 1.0e-10 10000 10000
+undump          dp
+
+print           "lenergy ${energy}"

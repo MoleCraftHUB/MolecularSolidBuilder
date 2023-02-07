@@ -1,0 +1,35 @@
+LAMMPS (3 Mar 2020)
+Reading data file ...
+  orthogonal box = (0 0 0) to (100 100 100)
+  2 by 2 by 3 MPI processor grid
+  reading atoms ...
+  80 atoms
+  read_data CPU = 0.0196854 secs
+WARNING: Changed valency_val to valency_boc for HE (../reaxc_ffield.cpp:315)
+WARNING: Changed valency_val to valency_boc for NE (../reaxc_ffield.cpp:315)
+WARNING: Changed valency_val to valency_boc for X (../reaxc_ffield.cpp:315)
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 12.5
+  ghost atom cutoff = 12.5
+  binsize = 6.25, bins = 16 16 16
+  2 neighbor lists, perpetual/occasional/extra = 2 0 0
+  (1) pair reax/c, perpetual
+      attributes: half, newton off, ghost
+      pair build: half/bin/newtoff/ghost
+      stencil: half/ghost/bin/3d/newtoff
+      bin: standard
+  (2) fix qeq/reax, perpetual, copy from (1)
+      attributes: half, newton off, ghost
+      pair build: copy
+      stencil: none
+      bin: none
+Setting up cg style minimization ...
+  Unit style    : real
+  Current step  : 0
+Per MPI rank memory allocation (min/avg/max) = 23.84 | 23.88 | 23.97 Mbytes
+Step Temp PotEng KinEng TotEng Density Volume Press Pzz Pxx Pyy Pxz Pxy Pyz Lx Ly Lz 
+       0            0   -11069.067            0   -11069.067 0.0010175318      1000000    213.61335     109.0224    257.88366      273.934    17.408154   -38.760939   -28.734299          100          100          100 
+     100            0   -11241.055            0   -11241.055 0.0010175318      1000000   0.76311729   0.12615777    3.4207895   -1.2575954  -0.57528771   -1.4064859  -0.40788231          100          100          100 
+     200            0    -11241.72            0    -11241.72 0.0010175318      1000000    1.1539175    0.2371215    3.6309734  -0.40634249  -0.88062873   -1.3448092  -0.52376847          100          100          100 
