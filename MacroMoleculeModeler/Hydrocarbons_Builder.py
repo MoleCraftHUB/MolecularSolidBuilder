@@ -621,8 +621,6 @@ def Propagate_v2(main,vertx,six_ring=False,five_ring=False,nbfive=0):
 				#get InChI output string -> store in the single list..
 				new_mols_inchi.append(inchi)
 
-		
-
 	new_mols_inchi = list(set(new_mols_inchi))
 	new_mols = [AllChem.MolFromInchi(inchi) for inchi in new_mols_inchi]
 
@@ -1190,3 +1188,266 @@ def Find_Vertex_All(m):
 	grow_index = [each for each in grow_index \
 		          if all([True if atoms[idx].GetSymbol() =='C' else False for idx in each])]
 	return grow_index
+
+
+
+def Propagate(main,vertx,six_ring=False,five_ring=False,nbfive=0):
+
+	new_mols = []
+	new_mols_inchi = []
+	#Assume the main mol is aromatic preserving the role of 4N+2 pi electrons
+	#Each carbon has a single pi electron
+	ring  = main.GetRingInfo()
+	ring_members = ring.AtomRings()
+
+	for v in vertx:
+		mols = []
+		if len(v) == 2: #case1
+			if six_ring and not five_ring:		
+				sms = ["[CH1][CH1][CH1][CH1]"]
+			elif not six_ring and five_ring:
+				sms = ["[CH1][CH1][CH1]"]
+			else:
+				sms = ["[CH1][CH1][CH1][CH1]","[CH1][CH1][CH1]"]
+		elif len(v) == 3: #case2
+			if six_ring and not five_ring:
+				sms = ["[CH1][CH1][CH1]"]
+			elif not six_ring and five_ring:
+				sms = ["[CH1][CH1]"]
+			else:
+				sms = ["[CH1][CH1][CH1]","[CH1][CH1]"]
+		elif len(v) == 4: #case3
+			if six_ring and not five_ring:
+				sms = ["[CH1][CH1]"]
+			elif not six_ring and five_ring:
+				sms = ["[CH1]"]
+			else:
+				sms = ["[CH1][CH1]","[CH1]"]
+		elif len(v) == 5: #case4
+			if six_ring and not five_ring:
+				sms = ["[CH1]"]
+			else:
+				sms = []
+		elif len(v) == 6: #case5
+			sms = []
+
+		if len(sms) > 0 and len(v) < 6:
+			for typ in range(len(sms)):
+				frg = AllChem.MolFromSmiles(sms[typ])
+				#find how many of fragment carbons should be SP2 hybridization
+				main_atoms = main.GetAtoms()
+				frg_atoms = frg.GetAtoms()
+
+				main_Ncarbons = len([atom for atom in main_atoms if atom.GetSymbol() == 'C'])
+				frg_Ncarbons = len([atom for atom in frg_atoms if atom.GetSymbol() == 'C'])
+				new_Npi = [i for i in range(frg_Ncarbons,-1,-1) if Npi_Aromaticity(i+main_Ncarbons)]
+
+				mcomb = Chem.CombineMols(main,frg)
+				mcomb_idx = [atom.GetIdx() for atom in mcomb.GetAtoms()]
+				mcomb_atoms = mcomb.GetAtoms()
+
+				mcomb = AllChem.AddHs(mcomb)
+				main_idx = mcomb_idx[:-len(frg.GetAtoms())]
+				frg_idx = mcomb_idx[-len(frg.GetAtoms()):]
+
+				#atoms to make bonding with frag
+				ringmem = [[len(r) for r in ring_members if el in r] for el in v]
+				count_five = [rmi.count(5) for rmi in ringmem]
+				if (len(frg_atoms)+len(v)==6 and any(count_five)>=0) or (len(frg_atoms)+len(v)==5 and any(count_five)<=nbfive):
+					edcombo = Chem.EditableMol(mcomb)
+					if (mcomb_atoms[v[0]].GetTotalNumHs()) == 2 and (mcomb_atoms[v[-1]].GetTotalNumHs()) == 2:
+						edcombo.AddBond(frg_idx[0],v[0],order=Chem.rdchem.BondType.SINGLE)
+						edcombo.AddBond(frg_idx[-1],v[-1],order=Chem.rdchem.BondType.DOUBLE)
+					elif (mcomb_atoms[v[0]].GetTotalNumHs()) == 1 and (mcomb_atoms[v[-1]].GetTotalNumHs()) == 2:
+						edcombo.AddBond(frg_idx[0],v[0],order=Chem.rdchem.BondType.SINGLE)
+						edcombo.AddBond(frg_idx[-1],v[-1],order=Chem.rdchem.BondType.DOUBLE)
+					elif (mcomb_atoms[v[0]].GetTotalNumHs()) == 2 and (mcomb_atoms[v[-1]].GetTotalNumHs()) == 1:
+						edcombo.AddBond(frg_idx[0],v[0],order=Chem.rdchem.BondType.DOUBLE)
+						edcombo.AddBond(frg_idx[-1],v[-1],order=Chem.rdchem.BondType.SINGLE)
+					elif (mcomb_atoms[v[0]].GetTotalNumHs()) == 1 and (mcomb_atoms[v[-1]].GetTotalNumHs()) == 1:
+						edcombo.AddBond(frg_idx[0],v[0],order=Chem.rdchem.BondType.SINGLE)
+						edcombo.AddBond(frg_idx[-1],v[-1],order=Chem.rdchem.BondType.SINGLE)
+					else:
+						edcombo.AddBond(frg_idx[0],v[0],order=Chem.rdchem.BondType.SINGLE)
+						edcombo.AddBond(frg_idx[-1],v[-1],order=Chem.rdchem.BondType.SINGLE)
+
+					ht = []
+					for vi in range(len(v)):
+						hs = sorted([n.GetIdx() for n in mcomb.GetAtoms()[v[vi]].GetNeighbors() if n.GetSymbol()=='H'], reverse=True)
+						if len(hs) > 0:
+							ht += hs
+					ht = sorted(ht,reverse=True)
+					[edcombo.RemoveAtom(t) for t in ht]
+
+					fm = edcombo.GetMol()
+					AllChem.Kekulize(fm)
+
+					fm = AllChem.RemoveHs(fm)
+					atoms2 = fm.GetAtoms()
+					bonds2 = fm.GetBonds()
+					[atom.SetNumRadicalElectrons(0) for atom in atoms2]
+
+					for ll, atom in enumerate(atoms2):
+						bts = []
+						for b in atom.GetBonds():
+							bts.append(b.GetBondTypeAsDouble())
+						valence = sum(bts)+atom.GetTotalNumHs()
+						atom.SetNumRadicalElectrons(int(4.5-valence))
+					[ atom.SetHybridization(Chem.rdchem.HybridizationType.SP3) for atom in atoms2 if atom.GetHybridization() == Chem.rdchem.HybridizationType.SP3D ]
+					
+					for bi in range(len(bonds2)):
+						bond = bonds2[bi]
+						a=bond.GetBeginAtom()
+						b=bond.GetEndAtom()
+						ah=a.GetHybridization()
+						bh=b.GetHybridization()
+						ann = [n.GetSymbol() for n in a.GetNeighbors() if n.GetSymbol() == 'C']
+						bnn = [n.GetSymbol() for n in b.GetNeighbors() if n.GetSymbol() == 'C']
+						a_radial_num = a.GetNumRadicalElectrons()
+						b_radial_num = b.GetNumRadicalElectrons()
+						if (ah == Chem.rdchem.HybridizationType.SP3 and bh == Chem.rdchem.HybridizationType.SP3) and (a_radial_num > 0 and b_radial_num > 0):
+							if (len(ann) == 3 and len(bnn) == 2) or (len(ann) == 2 and len(bnn) == 3):
+								bond.SetBondType(Chem.rdchem.BondType.DOUBLE)
+								a.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+								b.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+								a.SetNumRadicalElectrons(a_radial_num-1)
+								b.SetNumRadicalElectrons(b_radial_num-1)
+								a.UpdatePropertyCache()
+								b.UpdatePropertyCache()
+								bonds2 = fm.GetBonds()
+
+					for bi in range(len(bonds2)):
+						bond = bonds2[bi]
+						a=bond.GetBeginAtom()
+						b=bond.GetEndAtom()
+						ah=a.GetHybridization()
+						bh=b.GetHybridization()
+						ann = [n.GetSymbol() for n in a.GetNeighbors() if n.GetSymbol() == 'C']
+						bnn = [n.GetSymbol() for n in b.GetNeighbors() if n.GetSymbol() == 'C']
+						a_radial_num = a.GetNumRadicalElectrons()
+						b_radial_num = b.GetNumRadicalElectrons()
+						if (ah == Chem.rdchem.HybridizationType.SP3 and bh == Chem.rdchem.HybridizationType.SP3) and (a_radial_num > 0 and b_radial_num > 0):
+							if (len(ann) == 2 and len(bnn) == 2):
+								bond.SetBondType(Chem.rdchem.BondType.DOUBLE)
+								a.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+								b.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+								a.SetNumRadicalElectrons(a_radial_num-1)
+								b.SetNumRadicalElectrons(b_radial_num-1)
+								a.UpdatePropertyCache()
+								b.UpdatePropertyCache()
+								bonds2 = fm.GetBonds()
+
+					[atom.SetNumExplicitHs(2) for atom in atoms2 if atom.GetNumRadicalElectrons() == 1]
+					[atom.SetNumRadicalElectrons(0) for atom in atoms2 if atom.GetNumRadicalElectrons() == 1]
+
+					smi = AllChem.MolToSmiles(fm)#,kekuleSmiles=True)
+					inchi= AllChem.MolToInchi(fm) 
+
+					#get all resulting combined molecules
+					#get InChI output string -> store in the single list..
+					new_mols_inchi.append(inchi)
+
+		elif len(v) == 5 and len(sms) == 0:
+			#print("make connection")
+			atoms = main.GetAtoms()
+			main2 = AllChem.AddHs(main)
+			edcombo = Chem.EditableMol(main2)
+			connect = False
+			if (atoms[v[0]].GetTotalNumHs()) == 2 and (atoms[v[-1]].GetTotalNumHs()) == 2:
+				edcombo.AddBond(v[0],v[-1],order=Chem.rdchem.BondType.DOUBLE)
+				connect = True
+			elif (atoms[v[0]].GetTotalNumHs()) == 1 and (atoms[v[-1]].GetTotalNumHs()) == 1:
+				edcombo.AddBond(v[0],v[-1],order=Chem.rdchem.BondType.SINGLE)
+				connect = True
+
+			if connect:
+				ht = []
+				for vi in range(len(v)):
+					hs = sorted([n.GetIdx() for n in main2.GetAtoms()[v[vi]].GetNeighbors() if n.GetSymbol()=='H'], reverse=True)
+					if len(hs) > 0:
+						ht += hs
+				ht = sorted(ht,reverse=True)
+				[edcombo.RemoveAtom(t) for t in ht]
+				fm = edcombo.GetMol()
+				AllChem.Kekulize(fm)
+				fm = AllChem.RemoveHs(fm)
+				atoms2 = fm.GetAtoms()
+				bonds2 = fm.GetBonds()
+				
+				[ atom.SetHybridization(Chem.rdchem.HybridizationType.SP3) for atom in atoms2 if atom.GetHybridization() == Chem.rdchem.HybridizationType.SP3D ]
+
+				for bi in range(len(bonds2)):
+					bond = bonds2[bi]
+					a=bond.GetBeginAtom()
+					b=bond.GetEndAtom()
+					ah=a.GetHybridization()
+					bh=b.GetHybridization()
+					if ah == Chem.rdchem.HybridizationType.SP3 and bh == Chem.rdchem.HybridizationType.SP3:
+						bond.SetBondType(Chem.rdchem.BondType.DOUBLE)
+						a.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+						b.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+						a.UpdatePropertyCache()
+						b.UpdatePropertyCache()
+						bonds2 = fm.GetBonds()
+				[atom.SetNumRadicalElectrons(0) for atom in atoms2]
+				smi = AllChem.MolToSmiles(fm,kekuleSmiles=True)
+				inchi= AllChem.MolToInchi(fm) 
+
+				#get all resulting combined molecules
+				#get InChI output string -> store in the single list..
+				new_mols_inchi.append(inchi)
+
+		if len(v) == 6 and len(sms) == 0:
+			atoms = main.GetAtoms()
+			main2 = AllChem.AddHs(main)
+			edcombo = Chem.EditableMol(main2)
+			connect = False
+			if (atoms[v[0]].GetTotalNumHs()) == 2 and (atoms[v[-1]].GetTotalNumHs()) == 2:
+				edcombo.AddBond(v[0],v[-1],order=Chem.rdchem.BondType.DOUBLE)
+				connect = True
+			elif (atoms[v[0]].GetTotalNumHs()) == 1 and (atoms[v[-1]].GetTotalNumHs()) == 1:
+				edcombo.AddBond(v[0],v[-1],order=Chem.rdchem.BondType.SINGLE)
+				connect = True
+
+			if connect:
+				ht = []
+				for vi in range(len(v)):
+					hs = sorted([n.GetIdx() for n in main2.GetAtoms()[v[vi]].GetNeighbors() if n.GetSymbol()=='H'], reverse=True)
+					if len(hs) > 0:
+						ht += hs
+				ht = sorted(ht,reverse=True)
+				[edcombo.RemoveAtom(t) for t in ht]
+				fm = edcombo.GetMol()
+
+				AllChem.Kekulize(fm)
+				fm = AllChem.RemoveHs(fm)
+				atoms2 = fm.GetAtoms()
+				bonds2 = fm.GetBonds()
+				
+				[ atom.SetHybridization(Chem.rdchem.HybridizationType.SP3) for atom in atoms2 if atom.GetHybridization() == Chem.rdchem.HybridizationType.SP3D ]
+
+				for bi in range(len(bonds2)):
+					bond = bonds2[bi]
+					a=bond.GetBeginAtom()
+					b=bond.GetEndAtom()
+					ah=a.GetHybridization()
+					bh=b.GetHybridization()
+					if ah == Chem.rdchem.HybridizationType.SP3 and bh == Chem.rdchem.HybridizationType.SP3:
+						bond.SetBondType(Chem.rdchem.BondType.DOUBLE)
+						a.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+						b.SetHybridization(Chem.rdchem.HybridizationType.SP2)
+						a.UpdatePropertyCache()
+						b.UpdatePropertyCache()
+						bonds2 = fm.GetBonds()
+				[atom.SetNumRadicalElectrons(0) for atom in atoms2]
+				smi = AllChem.MolToSmiles(fm,kekuleSmiles=True)
+				inchi= AllChem.MolToInchi(fm) 
+
+				#get all resulting combined molecules
+				#get InChI output string -> store in the single list..
+				new_mols_inchi.append(inchi)
+
+	new_mols_inchi = list(set(new_mols_inchi))
+	new_mols = [AllChem.MolFromInchi(inchi) for inchi in new_mols_inchi]
+
+	return new_mols

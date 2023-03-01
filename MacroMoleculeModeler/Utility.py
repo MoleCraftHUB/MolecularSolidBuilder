@@ -96,7 +96,7 @@ def Embedfrom2Dto3D(mol):
     #AllChem.RemoveStereochemistry(mol)
     #AllChem.AssignAtomChiralTagsFromStructure(mol,confId=-1,replaceExistingTags=True)
     mol = AllChem.AddHs(mol)
-    AllChem.EmbedMolecule(mol, useRandomCoords=True, useBasicKnowledge=False)
+    AllChem.EmbedMolecule(mol, useRandomCoords=False, useBasicKnowledge=False)
     AllChem.MMFFOptimizeMolecule(mol, mmffVariant='MMFF94s',nonBondedThresh=1000)
     
     return mol

@@ -62,14 +62,14 @@ class pymol_jupyter_builder:
     def _process_is_running(self):
         return self._process is not None and self._process.poll() is None
 
-    def start(self, args=("",)):
+    def start(self, args=["-QR",]):
         exe = self.exe
         if self._process_is_running():
             print("A PyMOL RPC server is already running.")
             return
 
         assert isinstance(args, (list, tuple))
-        self._process = subprocess.Popen([exe, "-QR"])
+        self._process = subprocess.Popen([exe, " ".join(args)])
         self.server = xmlrpclib.ServerProxy("http://%s:%d" % (self.host, self.port))
         time.sleep(3)
 
@@ -90,7 +90,7 @@ class pymol_jupyter_builder:
     def refresh_model(self):
         #self.server.do('orient')
         self.server.do('bg_color white')
-        self.server.do('set sphere_scale, 0.4, (all)')
+        self.server.do('set sphere_scale, 0.2, (all)')
         self.server.do('set_bond stick_radius, 0.2, (all), (all)')
         self.server.do('color red,   elem o')
         self.server.do('color grey,  elem c')
