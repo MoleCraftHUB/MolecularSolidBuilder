@@ -78,8 +78,9 @@ def Minimum_Bounding_Box_3D(positions):
     new_x = ranking[1][0]
     new_y = ranking[2][0]
     new_box_info = [box_info[new_x],box_info[new_y],box_info[new_z]]
-    new_positions = np.array([[x,y,z] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
-    return new_positions, new_box_info
+    new_box_info_shift = [[0,new_box_info[0][1]-new_box_info[0][0]],[0,new_box_info[1][1]-new_box_info[1][0]],[0,new_box_info[2][1]-new_box_info[2][0]]]
+    new_positions = np.array([[x-new_box_info[0][0],y-new_box_info[1][0],z-new_box_info[2][0]] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
+    return new_positions, new_box_info_shift
 
 def ReadPositionInPDBfile(filename):
     f = open(filename,'r')
@@ -87,13 +88,15 @@ def ReadPositionInPDBfile(filename):
     positions = positions.astype(float)
     return positions
 
-def UpdatePositionInPDBfile(filename, positions):
+def UpdatePositionInPDBfile(filename, positions, box_info):
     f = open(filename,'r')
     lines = f.readlines()
     pdb_string = ""
 
     for i, line in enumerate(lines):
-        if 'HETATM' in line:
+        if 'END' in line:
+            pdb_string += 'END #3DBOX %4.3f %4.3f %4.3f' % (box_info[0][1],box_info[1][1],box_info[2][1])
+        elif 'HETATM' in line:
             lt = line.split()
             lt[5] = "%5.3f" % positions[i][0]
             lt[6] = "%5.3f" % positions[i][1]
@@ -109,7 +112,7 @@ def Get3DMinimumBoundingBox(filename,new_filename,format='pdb'):
     if format == 'pdb':
         positions = ReadPositionInPDBfile(filename)
         new_positions, new_box_info = Minimum_Bounding_Box_3D(positions)
-        pdb_string = UpdatePositionInPDBfile(filename, new_positions)
+        pdb_string = UpdatePositionInPDBfile(filename, new_positions, new_box_info)
         f = open(new_filename,'w')
         f.write(pdb_string)
         f.close()

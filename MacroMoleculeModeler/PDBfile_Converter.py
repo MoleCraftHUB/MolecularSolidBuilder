@@ -32,7 +32,7 @@ def MolsToPDBImageFile(mols,pdb_filename):
     f = open(pdb_filename,'w')
     for i, mol in enumerate(mols):
         mol3D = Embedfrom2Dto3D(mol)
-        pdbblock = AllChem.MolToPDBBlock(mol3D)
+        pdbblock = AllChem.MolToPDBBlock(mol3D,flavor=1)
         f.write(pdbblock)
         f.flush()
     f.close()
