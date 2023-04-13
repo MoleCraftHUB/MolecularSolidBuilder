@@ -3,12 +3,14 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, Draw
 from ase.io import read, write
 import numpy as np
+import numpy.linalg as LA
 import os, sys, glob, subprocess
 from itertools import combinations
 from copy import deepcopy
 import itertools
 from MinimumBoundingBox import MinimumBoundingBox
 from rdkit.Chem.Draw import rdMolDraw2D
+from mpl_toolkits.mplot3d import Axes3D
 
 def PAH_screen1(mol):
 
@@ -151,4 +153,7 @@ def PAH_size(mol):
     for j, group_range in enumerate(grouping):
         if group_value >= float(group_range[0]) and group_value < float(group_range[1]):
             return "pop%d" % (j+1), group_value, bounding_box.corner_points
+
+
+
 

@@ -1,0 +1,117 @@
+import rdkit
+from rdkit import Chem
+from rdkit.Chem import AllChem, Draw
+from ase.io import read, write
+import numpy as np
+import numpy.linalg as LA
+import os, sys, glob, subprocess
+from itertools import combinations
+from copy import deepcopy
+import itertools
+from rdkit.Chem.Draw import rdMolDraw2D
+from mpl_toolkits.mplot3d import Axes3D
+
+
+### Minimum bounding box 3D
+def yaw(theta):
+    theta = np.deg2rad(theta)
+    return np.array([[np.cos(theta), -np.sin(theta), 0],
+                     [np.sin(theta),  np.cos(theta), 0],
+                     [            0,              0, 1]])
+
+def pitch(theta):
+    theta = np.deg2rad(theta)
+    return np.array([[np.cos(theta) , 0, np.sin(theta)],
+                     [             0, 1,             0],
+                     [-np.sin(theta), 0, np.cos(theta)]])
+
+def roll(theta):
+    theta = np.deg2rad(theta)
+    return np.array([[1,              0,             0],
+                     [0,  np.cos(theta), np.sin(theta)],
+                     [0, -np.sin(theta), np.cos(theta)]])
+
+
+def CreateFigure():
+    """
+    Helper function to create figures and label axes
+    """
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    return ax
+
+
+def draw3DRectangle(ax, x1, y1, z1, x2, y2, z2):
+    # the Translate the datatwo sets of coordinates form the apposite diagonal points of a cuboid
+    ax.plot([x1, x2], [y1, y1], [z1, z1], color='b') # | (up)
+    ax.plot([x2, x2], [y1, y2], [z1, z1], color='b') # -->
+    ax.plot([x2, x1], [y2, y2], [z1, z1], color='b') # | (down)
+    ax.plot([x1, x1], [y2, y1], [z1, z1], color='b') # <--
+
+    ax.plot([x1, x2], [y1, y1], [z2, z2], color='b') # | (up)
+    ax.plot([x2, x2], [y1, y2], [z2, z2], color='b') # -->
+    ax.plot([x2, x1], [y2, y2], [z2, z2], color='b') # | (down)
+    ax.plot([x1, x1], [y2, y1], [z2, z2], color='b') # <--
+    
+    ax.plot([x1, x1], [y1, y1], [z1, z2], color='b') # | (up)
+    ax.plot([x2, x2], [y2, y2], [z1, z2], color='b') # -->
+    ax.plot([x1, x1], [y2, y2], [z1, z2], color='b') # | (down)
+    ax.plot([x2, x2], [y1, y1], [z1, z2], color='b') # <--
+
+def Minimum_Bounding_Box_3D(positions):
+    data = np.vstack([positions[:,0], positions[:,1], positions[:,2]])
+    means = np.mean(data, axis=1)
+    cov = np.cov(data)
+    eval, evec = LA.eig(cov)
+    centered_data = data - means[:,np.newaxis]
+    aligned_coords = np.matmul(evec.T, centered_data)
+    xmin, xmax, ymin, ymax, zmin, zmax = np.min(aligned_coords[0, :]), np.max(aligned_coords[0, :]), np.min(aligned_coords[1, :]), np.max(aligned_coords[1, :]), np.min(aligned_coords[2, :]), np.max(aligned_coords[2, :])
+    box_info = [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
+    x_diff = xmax - xmin
+    y_diff = ymax - ymin
+    z_diff = zmax - zmin
+    ranking = sorted([[0,x_diff],[1,y_diff],[2,z_diff]],key=lambda x:float(x[1]))
+    new_z = ranking[0][0]
+    new_x = ranking[1][0]
+    new_y = ranking[2][0]
+    new_box_info = [box_info[new_x],box_info[new_y],box_info[new_z]]
+    new_positions = np.array([[x,y,z] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
+    return new_positions, new_box_info
+
+def ReadPositionInPDBfile(filename):
+    f = open(filename,'r')
+    positions = np.array([line.split()[5:8] for line in f.readlines() if 'HETATM' in line.split() or 'ATOM' in line.split() ])
+    positions = positions.astype(float)
+    return positions
+
+def UpdatePositionInPDBfile(filename, positions):
+    f = open(filename,'r')
+    lines = f.readlines()
+    pdb_string = ""
+
+    for i, line in enumerate(lines):
+        if 'HETATM' in line:
+            lt = line.split()
+            lt[5] = "%5.3f" % positions[i][0]
+            lt[6] = "%5.3f" % positions[i][1]
+            lt[7] = "%5.3f" % positions[i][2]
+            new_lt = "%s%5s%4s%5s%6s%12s%8s%8s%6s%6s%12s\n" % (lt[0],lt[1],lt[2],lt[3],lt[4],lt[5],lt[6],lt[7],lt[8],lt[9],lt[10])
+            pdb_string+=new_lt
+        else:
+            pdb_string+=line
+    return pdb_string
+
+def Get3DMinimumBoundingBox(filename,new_filename,format='pdb'):
+
+    if format == 'pdb':
+        positions = ReadPositionInPDBfile(filename)
+        new_positions, new_box_info = Minimum_Bounding_Box_3D(positions)
+        pdb_string = UpdatePositionInPDBfile(filename, new_positions)
+        f = open(new_filename,'w')
+        f.write(pdb_string)
+        f.close()
+
+    return new_box_info
