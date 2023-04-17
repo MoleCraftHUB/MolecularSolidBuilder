@@ -92,9 +92,10 @@ def ReadPositionInPDBfile(pdb_string):
 def UpdatePositionInPDBfile(pdb_string, positions, box_info):
     #f = open(filename,'r')
     #lines = f.readlines()
-    pdb_string = pdb_string
-    lines = pdb_string.split('\n')
+    input_pdb_string = pdb_string
+    lines = input_pdb_string.split('\n')
 
+    pdb_string = ''
     for i, line in enumerate(lines):
         if 'END' in line:
             pdb_string += 'END #3DBOX %4.3f %4.3f %4.3f\n' % (box_info[0][1],box_info[1][1],box_info[2][1])
