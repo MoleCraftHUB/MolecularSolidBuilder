@@ -82,16 +82,18 @@ def Minimum_Bounding_Box_3D(positions):
     new_positions = np.array([[x-new_box_info[0][0],y-new_box_info[1][0],z-new_box_info[2][0]] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
     return new_positions, new_box_info_shift
 
-def ReadPositionInPDBfile(filename):
-    f = open(filename,'r')
-    positions = np.array([line.split()[5:8] for line in f.readlines() if 'HETATM' in line.split() or 'ATOM' in line.split() ])
+def ReadPositionInPDBfile(pdb_string):
+    #f = open(filename,'r')
+    lines = pdb_string.split('\n')
+    positions = np.array([line.split()[5:8] for line in lines if 'HETATM' in line.split() or 'ATOM' in line.split() ])
     positions = positions.astype(float)
     return positions
 
-def UpdatePositionInPDBfile(filename, positions, box_info):
-    f = open(filename,'r')
-    lines = f.readlines()
-    pdb_string = ""
+def UpdatePositionInPDBfile(pdb_string, positions, box_info):
+    #f = open(filename,'r')
+    #lines = f.readlines()
+    pdb_string = pdb_string
+    lines = pdb_string.split('\n')
 
     for i, line in enumerate(lines):
         if 'END' in line:
@@ -107,14 +109,14 @@ def UpdatePositionInPDBfile(filename, positions, box_info):
             pdb_string+=line
     return pdb_string
 
-def Get3DMinimumBoundingBox(filename,new_filename,format='pdb'):
+def Get3DMinimumBoundingBox(pdb_string,format='pdb'):
 
     if format == 'pdb':
-        positions = ReadPositionInPDBfile(filename)
+        positions = ReadPositionInPDBfile(pdb_string)
         new_positions, new_box_info = Minimum_Bounding_Box_3D(positions)
-        pdb_string = UpdatePositionInPDBfile(filename, new_positions, new_box_info)
-        f = open(new_filename,'w')
-        f.write(pdb_string)
-        f.close()
+        new_pdb_string = UpdatePositionInPDBfile(pdb_string, new_positions, new_box_info)
+        #f = open(new_filename,'w')
+        #f.write(pdb_string)
+        #f.close()
 
-    return new_box_info
+    return new_box_info, new_pdb_string
