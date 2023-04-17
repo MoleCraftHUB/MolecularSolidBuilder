@@ -97,7 +97,7 @@ def UpdatePositionInPDBfile(pdb_string, positions, box_info):
 
     for i, line in enumerate(lines):
         if 'END' in line:
-            pdb_string += 'END #3DBOX %4.3f %4.3f %4.3f' % (box_info[0][1],box_info[1][1],box_info[2][1])
+            pdb_string += 'END #3DBOX %4.3f %4.3f %4.3f\n' % (box_info[0][1],box_info[1][1],box_info[2][1])
         elif 'HETATM' in line:
             lt = line.split()
             lt[5] = "%5.3f" % positions[i][0]
@@ -106,7 +106,7 @@ def UpdatePositionInPDBfile(pdb_string, positions, box_info):
             new_lt = "%s%5s%4s%5s%6s%12s%8s%8s%6s%6s%12s\n" % (lt[0],lt[1],lt[2],lt[3],lt[4],lt[5],lt[6],lt[7],lt[8],lt[9],lt[10])
             pdb_string+=new_lt
         else:
-            pdb_string+=line
+            pdb_string+=line + '\n'
     return pdb_string
 
 def Get3DMinimumBoundingBox(pdb_string,format='pdb'):
