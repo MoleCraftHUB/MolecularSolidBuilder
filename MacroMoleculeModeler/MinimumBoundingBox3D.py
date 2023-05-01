@@ -80,7 +80,7 @@ def Minimum_Bounding_Box_3D(positions,center_at_origin=True):
     new_box_info = [box_info[new_x],box_info[new_y],box_info[new_z]]
     new_box_info_shift = [[0,new_box_info[0][1]-new_box_info[0][0]],[0,new_box_info[1][1]-new_box_info[1][0]],[0,new_box_info[2][1]-new_box_info[2][0]]]
     if center_at_origin:
-        new_positions = np.array([[x-new_box_info[0][0]/2,y-new_box_info[1][0]/2,z-new_box_info[2][0]/2] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
+        new_positions = np.array([[x,y,z] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
     else:
         new_positions = np.array([[x-new_box_info[0][0],y-new_box_info[1][0],z-new_box_info[2][0]] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
         
