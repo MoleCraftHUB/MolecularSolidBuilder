@@ -12,6 +12,7 @@ from rdkit.Chem import AllChem, Draw, Descriptors
 from .Hydrocarbons_Builder import convex_bond_atom
 from .Run_MD import ReaxFFminimize 
 from .Utility import Plot_2Dmol, Embedfrom2Dto3D_conformers, Embedfrom2Dto3D, MMFF94s_energy
+from .Heteroatom_Exchanger import *
 
 def molwith_idx(mol):
 	for atom in mol.GetAtoms():
@@ -692,3 +693,91 @@ def Combine_MD(ms, linker_sm='CCOCC', label=0):
 	return connected_m2, smi
 
 	#Count the number of bonds added to each molecule	
+
+
+# Developing...
+def Crosslink_SMILES_C(mol1,mol2):
+
+	combined_mol = []
+	mol1 = AllChem.RemoveHs(mol1)
+	flag, mol1_list = Heteroatom_Func_Add_CH3_list(mol1)
+	for mol1 in mol1_list:
+		atoms = mol1.GetAtoms()
+		a1c, a1r = type_idx_sym(mol1)
+		mol2 = AllChem.RemoveHs(mol2)
+		a2c, a2r = type_idx_sym(mol2)
+		pair_idx = []
+		pair_symbol = []
+
+		for a1_ in a1c.items():
+			for a2_ in a2c.items():
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+		for a1_ in a1c.items():
+			for a2_ in a2r.items():
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+		"""
+		for a1_ in a1r.items():
+			for a2_ in a2c.items():
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+		for a1_ in a1r.items():
+			for a2_ in a2r.items():
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+		"""
+
+		pair_new = []
+		for pi, ps in zip(pair_idx, pair_symbol):
+			pair_new.append(pi)
+		pair_update = [[p[0],p[1]+len(atoms)] for p in pair_new] # update index for combined mol
+		m_comb = Chem.CombineMols(mol1,mol2)
+
+		for i, link in enumerate(pair_update):
+			m_comb_dup = deepcopy(m_comb)
+			a1 = link[0]
+			a2 = link[1]
+			edcombo = Chem.EditableMol(m_comb_dup)
+			edcombo.AddBond(a1,a2,order=Chem.rdchem.BondType.SINGLE)
+			connected_m = edcombo.GetMol()
+			atoms_m = connected_m.GetAtoms()
+			
+			connected_m = AllChem.AddHs(connected_m)
+			atoms_m = connected_m.GetAtoms()
+			hs_remove = []
+			#print(atoms_m[a1].GetSymbol(),atoms_m[a2].GetSymbol())
+			#print([n.GetSymbol() for n in atoms_m[a1].GetNeighbors()],[n.GetSymbol() for n in atoms_m[a2].GetNeighbors()])
+			hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+			hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+			hs_remove.append(hs_a1)
+			hs_remove.append(hs_a2)
+
+			hs_remove = list(sorted(set(hs_remove), reverse=True))
+			edcombo2 = Chem.EditableMol(connected_m)
+			[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+			connected_m = edcombo2.GetMol()
+			final = deepcopy(connected_m)
+			MW = Descriptors.ExactMolWt(final)
+			try:
+				final2 = AllChem.RemoveHs(final)
+				combined_mol.append(final2)
+			except:
+				continue
+
+	mols = [[mol_,0] for mol_ in combined_mol]
+	return mols
+
+
+def Crosslink_withC(mol1,mol2):
+	mols = Crosslink_SMILES_C(mol1,mol2)
+
+	mols_arr = np.array(mols)[:,0]
+	mols_dict = {}
+	for i, mol in enumerate(mols_arr):
+		mol_noH = AllChem.RemoveHs(mol)
+		smi = AllChem.MolToSmiles(mol_noH,canonical=True, isomericSmiles=False)
+		mols_dict[smi] = mol
+	Combined_mols = [AllChem.MolFromSmiles(smi) for smi in mols_dict.keys()]
+
+	return Combined_mols
