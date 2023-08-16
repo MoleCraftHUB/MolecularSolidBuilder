@@ -695,38 +695,119 @@ def Combine_MD(ms, linker_sm='CCOCC', label=0):
 	#Count the number of bonds added to each molecule	
 
 
+# Revise
+def Combine_Two(mol1,mol2, linker_sm='CCOCC', label=0):
+	#ms is the list of mol objects
+	#shuffle the molecules before combine
+	#np.random.shuffle(ms)
+	add_crosslink = np.zeros(2)
+	seed = mol1
+	index_check = []
+	count = np.zeros(2)
+	convex_bond, convex_atom = convex_bond_atom(seed)
+	atoms = seed.GetAtoms()
+	avail_atom_idx_0 = [idx for idx in convex_atom if atoms[idx].IsInRing()]
+	index_check.append(avail_atom_idx_0)
+
+
+
+	seed = AllChem.RemoveHs(seed)
+	convex_bond, convex_atom = convex_bond_atom(seed)
+	atoms = seed.GetAtoms()
+	avail_atom_idx_1 = [idx for idx in convex_atom if atoms[idx].IsInRingSize(6) or (atoms[idx].IsInRingSize(5) and atoms[idx].GetTotalNumHs() == 1)]
+
+	atoms2 = mol2.GetAtoms()
+	convex_bond2, convex_atom2 = convex_bond_atom(mol2)
+	avail_atom_idx_2 = [idx for idx in convex_atom2 if atoms2[idx].IsInRingSize(6) or (atoms2[idx].IsInRingSize(5) and atoms2[idx].GetTotalNumHs() == 1)]
+	avail_atom_idx_2 = np.array(avail_atom_idx_2) + len(atoms)
+	index_check.append(list(avail_atom_idx_2))
+
+	m_comb = Chem.CombineMols(seed,mol2)
+	linker = AllChem.MolFromSmiles(linker_sm)
+	linker_indx = np.array([atom.GetIdx() for atom in linker.GetAtoms()]) + len(m_comb.GetAtoms())
+	linker_indx = [int(l) for l in linker_indx]
+	
+	series = []
+	#print(len(avail_atom_idx_1)*len(avail_atom_idx_2))
+	mol_list = []
+	smi_list = []
+
+	for a1 in avail_atom_idx_1:
+		for a2 in avail_atom_idx_2:				
+			m_comb2 = Chem.CombineMols(m_comb,linker)
+			edcombo = Chem.EditableMol(m_comb2)
+			a1 = int(a1)
+			a2 = int(a2)
+			b1 = int(linker_indx[0])
+			b2 = int(linker_indx[-1])
+			series.append([a1,a2,b1,b2])
+				
+			edcombo.AddBond(a1,b1,order=Chem.rdchem.BondType.SINGLE)
+			edcombo.AddBond(a2,b2,order=Chem.rdchem.BondType.SINGLE)
+			connected_m = edcombo.GetMol()
+			connected_m = AllChem.AddHs(connected_m)
+			atoms_m = connected_m.GetAtoms()
+			hs_remove = []
+			hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+			hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+			if len(linker_indx) > 1:
+				hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+				hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+				hs_b = [hs_b1,hs_b2]
+			else:
+				hs_b = [n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+			hs_b.append(hs_a1)
+			hs_b.append(hs_a2)
+			hs_remove = list(sorted(hs_b,reverse=True))
+			edcombo2 = Chem.EditableMol(connected_m)
+			[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+			connected_m = edcombo2.GetMol()
+			check = edcombo2.GetMol()
+			
+			#check rdmolops.RemoveStereochemistry()
+			#heteroatom : ReplaceCore()
+			params = AllChem.ETKDGv3()
+			params.useSmallRingTorsions = True
+			check = Embedfrom2Dto3D(check)
+			smi = AllChem.MolToSmiles(check)
+			if smi not in smi_list:
+				mol_list.append(check)
+				smi_list.append(smi)
+
+	return mol_list
+
+	#Count the number of bonds added to each molecule	
+
 # Developing...
-def Crosslink_SMILES_C(mol1,mol2):
+def Crosslink_SMILES_C(mol1,mol2,connect='C'):
 
 	combined_mol = []
 	mol1 = AllChem.RemoveHs(mol1)
-	flag, mol1_list = Heteroatom_Func_Add_CH3_list(mol1)
+	if connect=='C':
+		flag, mol1_list = Heteroatom_Func_Add_CH3_list(mol1)
+	elif connect=='CC':
+		flag, mol1_list = Heteroatom_Func_Add_CH2CH3_list(mol1)
+	else:
+		return False
+	
 	for mol1 in mol1_list:
 		atoms = mol1.GetAtoms()
+		a1idx = [a.GetIdx() for a in atoms][-1]
+		a1sym = [a.GetSymbol() for a in atoms][-1]
+
 		a1c, a1r = type_idx_sym(mol1)
+
 		mol2 = AllChem.RemoveHs(mol2)
 		a2c, a2r = type_idx_sym(mol2)
 		pair_idx = []
 		pair_symbol = []
 
-		for a1_ in a1c.items():
-			for a2_ in a2c.items():
-				pair_idx.append([a1_[0],a2_[0]])
-				pair_symbol.append(a1_[1]+a2_[1])
-		for a1_ in a1c.items():
-			for a2_ in a2r.items():
-				pair_idx.append([a1_[0],a2_[0]])
-				pair_symbol.append(a1_[1]+a2_[1])
-		"""
-		for a1_ in a1r.items():
-			for a2_ in a2c.items():
-				pair_idx.append([a1_[0],a2_[0]])
-				pair_symbol.append(a1_[1]+a2_[1])
-		for a1_ in a1r.items():
-			for a2_ in a2r.items():
-				pair_idx.append([a1_[0],a2_[0]])
-				pair_symbol.append(a1_[1]+a2_[1])
-		"""
+		for a2_ in a2c.items():
+			pair_idx.append([a1idx,a2_[0]])
+			pair_symbol.append(a1sym+a2_[1])
+		for a2_ in a2r.items():
+			pair_idx.append([a1idx,a2_[0]])
+			pair_symbol.append(a1sym+a2_[1])
 
 		pair_new = []
 		for pi, ps in zip(pair_idx, pair_symbol):
@@ -769,8 +850,8 @@ def Crosslink_SMILES_C(mol1,mol2):
 	return mols
 
 
-def Crosslink_withC(mol1,mol2):
-	mols = Crosslink_SMILES_C(mol1,mol2)
+def Crosslink_withC(mol1,mol2,connect='C'):
+	mols = Crosslink_SMILES_C(mol1,mol2,connect)
 
 	mols_arr = np.array(mols)[:,0]
 	mols_dict = {}

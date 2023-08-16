@@ -69,6 +69,10 @@ def Minimum_Bounding_Box_3D(positions,center_at_origin=True):
     centered_data = data - means[:,np.newaxis]
     aligned_coords = np.matmul(evec.T, centered_data)
     xmin, xmax, ymin, ymax, zmin, zmax = np.min(aligned_coords[0, :]), np.max(aligned_coords[0, :]), np.min(aligned_coords[1, :]), np.max(aligned_coords[1, :]), np.min(aligned_coords[2, :]), np.max(aligned_coords[2, :])
+    # Realign with original coordinats
+    realigned_coords = np.matmul(evec, aligned_coords)
+    realigned_coords += means[:, np.newaxis]
+    
     box_info = [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
     x_diff = xmax - xmin
     y_diff = ymax - ymin
@@ -83,7 +87,17 @@ def Minimum_Bounding_Box_3D(positions,center_at_origin=True):
         new_positions = np.array([[x,y,z] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
     else:
         new_positions = np.array([[x-new_box_info[0][0],y-new_box_info[1][0],z-new_box_info[2][0]] for x,y,z in zip(aligned_coords[new_x],aligned_coords[new_y],aligned_coords[new_z])])
-        
+    
+    # Realign with original coordinats
+    realigned_coords = np.matmul(evec, aligned_coords)
+    realigned_coords += means[:, np.newaxis]
+    rectCoords = lambda x1, y1, z1, x2, y2, z2: np.array([[x1, x1, x2, x2, x1, x1, x2, x2],
+                                                      [y1, y2, y2, y1, y1, y2, y2, y1],
+                                                      [z1, z1, z1, z1, z2, z2, z2, z2]])
+    # rrc = rotated rectangle coordinates
+    rrc = np.matmul(evec, rectCoords(xmin, ymin, zmin, xmax, ymax, zmax))
+    rrc += means[:, np.newaxis] 
+
     return new_positions, new_box_info_shift
 
 def ReadPositionInPDBfile(pdb_string):

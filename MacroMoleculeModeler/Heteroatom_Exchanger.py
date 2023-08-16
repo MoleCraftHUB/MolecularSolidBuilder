@@ -100,7 +100,6 @@ def num_thiophene_s(mol):
 
 
 #############
-
 def Convert_OH2CH3(mol):
     mol = deepcopy(mol)
     AllChem.Kekulize(mol)
@@ -1981,3 +1980,118 @@ def Heteroatom_Func_Add_CH3_list(mol):
     else:
         mol = AllChem.RemoveHs(mol)
         return False, mol_list
+    
+
+    
+def Heteroatom_Func_Add_CH2CH3_list(mol):
+    mol = deepcopy(mol)
+    convex_bond_idx, convex_atom_idx = convex_bond_atom(mol)
+    atoms = mol.GetAtoms()
+    aromatic_Hs = [atom.GetIdx() for atom in atoms \
+        if atom.GetTotalNumHs() == 1 and atom.IsInRing() \
+        and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
+    aliphatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 3 and not atom.IsInRing()]
+    Hs = aromatic_Hs
+    if len(Hs) > 0:
+        Hs = aromatic_Hs
+    else:
+        Hs = aliphatic_Hs
+    Chem.Kekulize(mol)
+
+    mol_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            mol_new = deepcopy(mol)
+            mol_new = AllChem.RemoveHs(mol_new)
+            atoms = mol.GetAtoms()
+            atoms[idx_modify].SetNumExplicitHs(0)
+            Func = AllChem.MolFromSmiles('CC')
+            Func_atoms = Func.GetAtoms()
+            Func_atoms[0].SetNoImplicit(True)
+            Func_atoms[0].SetNumExplicitHs(2)
+            Func_idx = np.array([0,1]) + len(atoms)
+            AddFunc = Chem.CombineMols(mol,Func)
+            EAddFunc = AllChem.EditableMol(AddFunc)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            mol_new = EAddFunc.GetMol()
+            atoms_comb = mol_new.GetAtoms()
+            mol_new = AllChem.RemoveHs(mol_new)
+            mol_list.append(mol_new)
+        return True, mol_list
+    else:
+        mol = AllChem.RemoveHs(mol)
+        return False, mol_list
+
+def Heteroatom_Func_Add_OH_list(mol):
+    mol = deepcopy(mol)
+    convex_bond_idx, convex_atom_idx = convex_bond_atom(mol)
+    atoms = mol.GetAtoms()
+    aromatic_Hs = [atom.GetIdx() for atom in atoms \
+        if atom.GetTotalNumHs() == 1 and atom.IsInRing() \
+        and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
+    aliphatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 3 and not atom.IsInRing()]
+    Hs = aromatic_Hs
+    if len(Hs) > 0:
+        Hs = aromatic_Hs
+    else:
+        Hs = aliphatic_Hs
+    Chem.Kekulize(mol)
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            mol_new = deepcopy(mol)
+            mol_new = AllChem.RemoveHs(mol_new)
+            atoms = mol.GetAtoms()
+            atoms[idx_modify].SetNumExplicitHs(0)
+            Func = AllChem.MolFromSmiles('O')
+            Func_atoms = Func.GetAtoms()
+            Func_atoms[0].SetNoImplicit(True)
+            Func_atoms[0].SetNumExplicitHs(1)
+            Func_idx = np.array([0]) + len(atoms)
+            AddFunc = Chem.CombineMols(mol,Func)
+            EAddFunc = AllChem.EditableMol(AddFunc)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            mol_new = EAddFunc.GetMol()
+            atoms_comb = mol_new.GetAtoms()
+            mol_new = AllChem.RemoveHs(mol_new)
+            mol_new = Embedfrom2Dto3D(mol_new)
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                mol_list.append(AllChem.RemoveHs(mol_new))
+                smi_list.append(smi)
+        return True, mol_list
+    else:
+        mol = AllChem.RemoveHs(mol)
+        return False, mol_list
+    
+"""
+def Heteroatom_Func_Add_OH(mol):
+    mol = deepcopy(mol)
+    mol = AllChem.RemoveHs(mol)
+    atoms = mol.GetAtoms()
+    aromatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 1 and atom.GetIsAromatic() == True and atom.GetSymbol() == 'C'] 
+    Chem.Kekulize(mol)
+    if len(aromatic_Hs) > 0:
+        random.shuffle(aromatic_Hs)
+        #choose one
+        idx_modify = aromatic_Hs[0]
+        atoms[idx_modify].SetNumExplicitHs(0)
+        Func = AllChem.MolFromSmiles('O')
+        Func_atoms = Func.GetAtoms()
+        Func_atoms[0].SetNoImplicit(True)
+        Func_atoms[0].SetNumExplicitHs(1)
+        Func_idx = np.array([0]) + len(atoms)
+        AddFunc = Chem.CombineMols(mol,Func)
+        EAddFunc = AllChem.EditableMol(AddFunc)
+        EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+        mol = EAddFunc.GetMol()
+        atoms_comb = mol.GetAtoms()
+        mol = AllChem.RemoveHs(mol)
+        return True, mol
+    else:
+        mol = AllChem.RemoveHs(mol)
+        return False, mol
+
+"""

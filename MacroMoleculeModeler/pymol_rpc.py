@@ -106,6 +106,9 @@ class pymol_jupyter_builder:
         #self.server.do('set ray_shadows,0')
 
         return
+    
+    def command(self,cmd):
+        self.server.do(cmd)
 
     #Import files
     def file_import(self,file_paths,label=False):
@@ -133,6 +136,8 @@ class pymol_jupyter_builder:
         self.server.do('select atom2, name %s' % atom_label2)
         self.server.do('unbond atom1, atom2')
         return
+
+
 
     def grid_translate(self,object_names,num=20,dist=10):
         if self.Grid_mode == True:
@@ -166,8 +171,6 @@ class pymol_jupyter_builder:
             self.server.do('translate [%d,%d,-1], %s' % (pos[i][0],pos[i][1],obj))
         self.server.do('reset')
         self.Grid_mode = True
-
-        
         return 
 
     def Get_Object_Names(self):
