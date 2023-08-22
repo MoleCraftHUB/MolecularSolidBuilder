@@ -1,4 +1,4 @@
-# MacroMoleculeModeler
+# Molecular Solid Builder
 
 ## Introduction
 
