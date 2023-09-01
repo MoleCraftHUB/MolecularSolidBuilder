@@ -8,9 +8,29 @@ import os, sys, glob, subprocess
 from itertools import combinations
 from copy import deepcopy
 import itertools
+from .MinimumBoundingBox3D import Get3DMinimumBoundingBox
 from MinimumBoundingBox import MinimumBoundingBox
 from rdkit.Chem.Draw import rdMolDraw2D
 from mpl_toolkits.mplot3d import Axes3D
+
+def SMItoPDBblock(smi,mmb=False):
+	mol = AllChem.MolFromSmiles(smi)
+	mol_3d = Embedfrom2Dto3D(mol)
+	pdb_string = AllChem.MolToPDBBlock(mol_3d)
+	if mmb:
+		box, pdb_string = Get3DMinimumBoundingBox(pdb_string)
+	return pdb_string
+
+def SMItoPDBFile(smi,fname,mmb=False):
+	pdb_string = SMItoPDBblock(smi)
+	pdb_file = open(fname,'w')
+	pdb_file.write(pdb_string)
+	pdb_file.close()
+
+	return fname
+
+
+
 
 def PAH_screen1(mol):
 
