@@ -108,8 +108,6 @@ def ReadPositionInPDBfile(pdb_string):
     return positions
 
 def UpdatePositionInPDBfile(pdb_string, positions, box_info):
-    #f = open(filename,'r')
-    #lines = f.readlines()
     input_pdb_string = pdb_string
     lines = input_pdb_string.split('\n')
 
@@ -134,8 +132,5 @@ def Get3DMinimumBoundingBox(pdb_string,format='pdb'):
         positions = ReadPositionInPDBfile(pdb_string)
         new_positions, new_box_info = Minimum_Bounding_Box_3D(positions)
         new_pdb_string = UpdatePositionInPDBfile(pdb_string, new_positions, new_box_info)
-        #f = open(new_filename,'w')
-        #f.write(pdb_string)
-        #f.close()
 
     return new_box_info, new_pdb_string

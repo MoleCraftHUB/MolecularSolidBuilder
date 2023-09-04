@@ -9,7 +9,7 @@ from itertools import combinations
 from copy import deepcopy
 import itertools
 from .MinimumBoundingBox3D import Get3DMinimumBoundingBox
-from MinimumBoundingBox import MinimumBoundingBox
+#from MinimumBoundingBox import MinimumBoundingBox
 from rdkit.Chem.Draw import rdMolDraw2D
 from mpl_toolkits.mplot3d import Axes3D
 

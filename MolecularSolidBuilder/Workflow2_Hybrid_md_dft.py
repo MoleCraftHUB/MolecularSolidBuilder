@@ -9,6 +9,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, Draw, rdCoordGen, Descriptors, rdMolHash
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem.rdchem import HybridizationType
+from .MinimumBoundingBox3D import Get3DMinimumBoundingBox
 
 
 def lmpdumpfile_cell_info(lmpdumpfile):
@@ -50,7 +51,8 @@ def lmpdumpfile_cell_info(lmpdumpfile):
 
     cell_f = [[xlo,xhi], [ylo,yhi], [zlo,zhi]]
     cell_mat = np.array([[xhi-xlo, 0, 0],[xy,yhi-ylo,0],[xz,yz,zhi-zlo]])
-    return cell_f, cell_mat
+    origin = [xlo,ylo,zlo]
+    return cell_f, cell_mat, origin
 
 def pdbmols_to_aseatoms(lmpdumpfile,pdb_collect_dir):
 
@@ -438,13 +440,15 @@ def generate_systemlt_withcoords(lmpdumpfile,mol_lt_dir='4_lts',lt_dir='moltempl
         subprocess.call('cp %s %s' % (mol_lt_file,lt_dir),shell=True)
 
 
-
-
 ###############
-
 # Currently working.. 
 # /nfs/data/ccsd/proj-shared/pilsun/c4ward_project3_large_scale_pitch_model/small_dft/1_shifted_layer_gaff
-def generate_systemlt_SL(lmpdumpfile,pdb_start_dir='1_split_pdb', mol_lt_dir='4_lts',lt_dir='moltemplate_files',random_arrangement=True):
+def generate_systemlt_SL(lmpdumpfile,
+                         x_num,y_num,z_num,total_num,
+                         pdb_start_dir='1_split_pdb',
+                         mol_lt_dir='4_lts',
+                         lt_dir='moltemplate_files',
+                         random_arrangement=True):
 
     cell_mat, cell_f = lmpdumpfile_cell_info(lmpdumpfile)
     mol_pdb_files = sorted(glob.glob('%s/*.pdb' % pdb_start_dir),key=lambda x:int(x[:-4].split('_')[-1]))
@@ -452,33 +456,30 @@ def generate_systemlt_SL(lmpdumpfile,pdb_start_dir='1_split_pdb', mol_lt_dir='4_
 
     box_sizes = []
     for i, pdb_file in enumerate(mol_pdb_files):
-        box_size = np.array(open(pdb_file,'r').readlines()[-1].split()[2:])
-        box_size = box_size.astype(float)
-        box_sizes.append(box_size) #3x3 matrix...
+        with open(pdb_file,'r') as fpdb:
+            pdb_string = fpdb.read()
+        box_info, up = Get3DMinimumBoundingBox(pdb_string)
+        #box_size = np.array(open(pdb_file,'r').readlines()[-1].split()[2:])
+        #box_size = box_size.astype(float)
+        box_sizes.append(box_info) #3x3 matrix...
     box_sizes = np.array(box_sizes)
     names = [mol_lt_name[:-3] for mol_lt_name in mol_lt_files]
     biggest_box_size = [max(box_sizes[:,0]),max(box_sizes[:,1]),max(box_sizes[:,2])]
 
-    x_num = 2
-    y_num = 2
-    z_num = 2
-    nmols = 1000
-
     anglex1 = 42
     angley1 = 30
+    shift1 = 0
 
     anglex2 = 42
     angley2 = 30
-
+    shift2 = 0
 
     print(abs( math.cos(math.radians(anglex1)) ), abs( math.cos(math.radians(angley1)) ))
     x_dist = biggest_box_size[0] * abs( math.cos(math.radians(angley1)) ) * 1.1
     y_dist = biggest_box_size[1] * abs( math.cos(math.radians(anglex1)) ) * 1.1
     z_dist1 = 5
 
-
     a = 0
-
     strings = ""
     for i, mol_lt_file in enumerate(mol_lt_files):
         strings += "import %s\n" % mol_lt_file.split('/')[-1]
@@ -486,41 +487,33 @@ def generate_systemlt_SL(lmpdumpfile,pdb_start_dir='1_split_pdb', mol_lt_dir='4_
     #names_increased1 = [name.split('/')[-1] for name in names][:-1]*x_num*y_num*z_num #Dimer crosslinked
     names_increased2 = [name.split('/')[-1] for name in names]*x_num*y_num*z_num #Monomer
 
-    names_increased_cut = names_increased2[:nmols]
+    names_increased_cut = names_increased2[:total_num]
     if random_arrangement:
         random.shuffle(names_increased_cut)
 
-    x_num2 = x_num
-    y_num2 = y_num
-    z_num2 = z_num
+    x_cell = x_dist*x_num
+    y_cell = y_dist*y_num
+    z_cell = z_dist1*z_num
 
-    x_cell = x_dist*x_num2
-    y_cell = y_dist*y_num2
-    z_cell = z_dist1*z_num2
-
-    for i_x in range(0,x_num2,1):
-        for i_y in range(0,y_num2,2):
-            for i_z in range(z_num2):
+    for i_x in range(0,x_num,1):
+        for i_y in range(0,y_num,2):
+            for i_z in range(z_num):
                 x_pos = x_dist*i_x - (x_dist/y_num) * i_y
                 y_pos = y_dist*i_y
-                z_pos = z_dist1*i_z
-                #print(a,names_increased_cut[a])
+                z_pos = z_dist1*i_z + shift1
                 name = names_increased_cut[a]
                 each_mol = "mol%d = new %s.move(%4.3f,%4.3f,%4.3f).rot(%f,1,0,0,%4.3f,%4.3f,%4.3f).rot(%f,0,1,0,%4.3f,%4.3f,%4.3f)\n" % (a,name,x_pos,y_pos,z_pos,anglex1,x_pos,y_pos,z_pos,angley1,x_pos,y_pos,z_pos)
                 strings+=each_mol
                 a += 1
 
-    strings+="#alt1\n"
+    strings+="#alternative columns\n"
 
-
-    for i_x in range(0,x_num2,1):
-        for i_y in range(1,y_num2,2):
-            for i_z in range(z_num2):
-                #print(i_x,i_y,i_z)
+    for i_x in range(0,x_num,1):
+        for i_y in range(1,y_num,2):
+            for i_z in range(z_num):
                 x_pos = x_dist*i_x - (x_dist/y_num) * i_y
                 y_pos = y_dist*i_y
-                z_pos = z_dist1*i_z #+ 2
-                #print(a,names_increased_cut[a])
+                z_pos = z_dist1*i_z + shift2
                 name = names_increased_cut[a]
                 each_mol = "mol%d = new %s.move(%4.3f,%4.3f,%4.3f).rot(%f,1,0,0,%4.3f,%4.3f,%4.3f).rot(%f,0,1,0,%4.3f,%4.3f,%4.3f)\n" % (a,name,x_pos,y_pos,z_pos,anglex2,x_pos,y_pos,z_pos,angley2,x_pos,y_pos,z_pos)
                 strings+=each_mol
@@ -533,19 +526,14 @@ def generate_systemlt_SL(lmpdumpfile,pdb_start_dir='1_split_pdb', mol_lt_dir='4_
     strings += "0 0 0 xy xz yz\n"
     strings += "}\n"
 
-    if not os.path.exists('./%s' % new_dir):
-        os.mkdir('./%s' % new_dir)
-
-    if not os.path.exists('./%s/moltemplate_files' % new_dir):
-        os.mkdir('./%s/moltemplate_files' % new_dir)
+    if not os.path.exists('./moltemplate_files'):
+        os.mkdir('./moltemplate_files')
     else:
-        subprocess.call('rm -r ./%s/moltemplate_files/*.lt' % new_dir,shell=True)
+        subprocess.call('rm -r ./moltemplate_files/*.lt',shell=True)
 
-    f = open('./%s/moltemplate_files/system.lt' % new_dir,'w')
+    f = open('./moltemplate_files/system.lt','w')
     f.write(strings)
     f.close()
 
-    print(x_cell,y_cell,z_cell)
-
     for mol_lt in mol_lt_files:
-        subprocess.call('cp %s ./%s/moltemplate_files'% (mol_lt,new_dir),shell=True)
+        subprocess.call('cp %s ./moltemplate_files'% (mol_lt),shell=True)
