@@ -1507,9 +1507,9 @@ def Intramolecular_Bond(mol):
 				arf2 = rf2.AtomRings()
 				size_ring = len([c for c in arf2 if len(c) < 5] + [c for c in arf2 if len(c) > 7])
 				flag = 0
-				for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
-					if c1 > 0 and c2 == True:
-						flag += 1
+				#for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
+				#	if c1 > 0 and c2 == True:
+				#		flag += 1
 
 				if size_ring == 0 and flag == 0:
 					#print(check_ih[1:-1],check_ir[1:-1])
