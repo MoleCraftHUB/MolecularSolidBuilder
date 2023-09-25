@@ -1518,6 +1518,4 @@ def Intramolecular_Bond(mol):
 					#print(check_ih[1:-1],check_ir[1:-1])
 					test_mols.append(rem_H)
 					test_info.append("Bonding %s %s" % (idx1,idx2))
-	if len(test_mols) == 0:
-		test_mols.append(mol)
 	return test_mols, test_info
