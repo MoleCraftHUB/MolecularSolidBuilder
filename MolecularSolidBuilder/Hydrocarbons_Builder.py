@@ -1502,7 +1502,10 @@ def Intramolecular_Bond(mol):
 				for idd in atomsToRemove:
 					em2.RemoveAtom(idd)
 				rem_H = em2.GetMol()
-				AllChem.Kekulize(rem_H)
+				try:
+					AllChem.Kekulize(rem_H)
+				except:
+					continue
 				rf2 = rem_H.GetRingInfo()
 				arf2 = rf2.AtomRings()
 				size_ring = len([c for c in arf2 if len(c) < 5] + [c for c in arf2 if len(c) > 7])
@@ -1517,66 +1520,3 @@ def Intramolecular_Bond(mol):
 					test_info.append("Bonding %s %s" % (idx1,idx2))
 
 	return test_mols, test_info
-
-
-"""
-def Intramolecular_Bond(mol):
-	test_mols = []
-	test_info = []
-
-	mol = AllChem.RemoveHs(mol)
-	atoms = mol.GetAtoms()
-	idx_wH = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() > 0]
-	nconnect_idxs = []
-	h_num_checks = []
-	for i in range(len(idx_wH)):
-		idx1 = idx_wH[i]
-		for j in range(i+1,len(idx_wH)):
-			idx2 = idx_wH[j]
-			connect_idx = AllChem.GetShortestPath(mol,idx1,idx2)
-			Dist3D = AllChem.Get3DDistanceMatrix(mol)
-			check_bonded = mol.GetBondBetweenAtoms(idx1,idx2)
-			rf = mol.GetRingInfo()
-			arf = rf.AtomRings()
-			check_ih = [atoms[iid].GetTotalNumHs() for iid in connect_idx]
-			check_ir = [atoms[iid].IsInRing() for iid in connect_idx]
-			if (Dist3D[idx1,idx2] < 4) and (check_bonded==None) and (not rf.AreAtomsInSameRing(idx1,idx2)):
-				mol_copy = copy.deepcopy(mol)
-				atoms_copy = mol_copy.GetAtoms()
-				#print(idx1,idx2,Dist3D[idx1,idx2],check_bonded)
-				#print(atoms_copy[idx1].GetNumExplicitHs(),atoms_copy[idx2].GetNumExplicitHs())
-
-				edcombo = Chem.EditableMol(mol_copy)
-				edcombo.AddBond(idx1,idx2,order=Chem.rdchem.BondType.SINGLE)
-				back = edcombo.GetMol()
-
-				atoms2 = back.GetAtoms()
-				atoms2[idx1].SetNumExplicitHs(0)
-				atoms2[idx2].SetNumExplicitHs(0)
-
-				back_H = AllChem.AddHs(back,addCoords=True)
-				atoms2_H = back_H.GetAtoms()
-				test1 = [n.GetIdx() for n in atoms2_H[idx1].GetNeighbors() if n.GetSymbol() == 'H']
-				test2 = [n.GetIdx() for n in atoms2_H[idx2].GetNeighbors() if n.GetSymbol() == 'H']
-				em2 = Chem.EditableMol(back_H)
-				atomsToRemove = sorted(test1+test2,reverse=True)
-				for idd in atomsToRemove:
-					em2.RemoveAtom(idd)
-				rem_H = em2.GetMol()
-				AllChem.Kekulize(rem_H)
-				rf2 = rem_H.GetRingInfo()
-				arf2 = rf2.AtomRings()
-				size_ring = len([c for c in arf2 if len(c) < 5]) + len([c for c in arf2 if len(c) > 7])
-				flag = 0
-				for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
-					if c1 > 0 and c2 == True:
-						flag += 1
-
-				if size_ring == 0 and flag == 0:
-					print(check_ih[1:-1],check_ir[1:-1])
-					
-					test_mols.append(rem_H)
-					test_info.append("Bonding %s %s" % (idx1,idx2))
-
-	return test_mols, test_info
-"""
