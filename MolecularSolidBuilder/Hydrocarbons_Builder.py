@@ -7,7 +7,7 @@ import numpy as np
 import os, sys, glob, subprocess, copy
 from itertools import combinations
 import itertools
-
+from rdkit.Chem import rdForceFieldHelpers
 
 
 def arylbond_combine(mol1,mol2):
@@ -1506,6 +1506,19 @@ def Intramolecular_Bond(mol):
 					AllChem.Kekulize(rem_H)
 				except:
 					continue
+
+				pos_info = [[ai,rem_H.GetConformer().GetAtomPosition(ai)] for ai, aa in enumerate(rem_H.GetAtoms())]
+				pos = [[p.x,p.y,p.z] for atom_idx, p in pos_info]
+				dis_th = 8.0
+				check1 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx1]) if np.linalg.norm(dis_v) > dis_th]
+				check2 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx2]) if np.linalg.norm(dis_v) > dis_th]
+				constrain_idxs = sorted(set(check1+check2))
+				mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(rem_H)
+				ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(rem_H,mmffps)
+				for atidx in constrain_idxs:
+					ff.MMFFAddPositionConstraint(atidx,0.05,200)
+				ff.Minimize()
+				
 				rf2 = rem_H.GetRingInfo()
 				arf2 = rf2.AtomRings()
 				size_ring = len([c for c in arf2 if len(c) < 5] + [c for c in arf2 if len(c) > 7])
@@ -1515,7 +1528,6 @@ def Intramolecular_Bond(mol):
 				#		flag += 1
 
 				if size_ring == 0 and flag == 0:
-					#print(check_ih[1:-1],check_ir[1:-1])
 					test_mols.append(rem_H)
 					test_info.append("Bonding %s %s" % (idx1,idx2))
 	return test_mols, test_info
