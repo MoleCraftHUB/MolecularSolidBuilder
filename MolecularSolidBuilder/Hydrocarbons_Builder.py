@@ -1521,7 +1521,7 @@ def Intramolecular_Bond(mol):
 				
 				rf2 = rem_H.GetRingInfo()
 				arf2 = rf2.AtomRings()
-				size_ring = len([c for c in arf2 if len(c) < 5] + [c for c in arf2 if len(c) > 7])
+				size_ring = len([c for c in arf2 if len(c) < 5]) #+ [c for c in arf2 if len(c) > 7])
 				flag = 0
 				#for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
 				#	if c1 > 0 and c2 == True:
