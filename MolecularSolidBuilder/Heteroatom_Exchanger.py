@@ -1706,7 +1706,7 @@ def Heteroatom_Func_Remove_CH3(mol):
 
 def Heteroatom_Func_Add_OH(mol,input_3d=True):
     mol = deepcopy(mol)
-    mol = AllChem.RemoveHs(mol_new)
+    mol = AllChem.RemoveHs(mol)
     atoms = mol.GetAtoms()
     aromatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 1 and atom.GetIsAromatic() == True and atom.GetSymbol() == 'C'] 
     Chem.Kekulize(mol)
