@@ -1705,11 +1705,11 @@ def Heteroatom_Func_Remove_CH3(mol):
         return False, mol
 
 def Heteroatom_Func_Add_OH(mol,input_3d=True):
-    mol_new = deepcopy(mol)
-    mol_new = AllChem.RemoveHs(mol_new)
-    atoms = mol_new.GetAtoms()
+    mol = deepcopy(mol)
+    mol = AllChem.RemoveHs(mol_new)
+    atoms = mol.GetAtoms()
     aromatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 1 and atom.GetIsAromatic() == True and atom.GetSymbol() == 'C'] 
-    Chem.Kekulize(mol_new)
+    Chem.Kekulize(mol)
     if len(aromatic_Hs) > 0:
         random.shuffle(aromatic_Hs)
         #choose one
