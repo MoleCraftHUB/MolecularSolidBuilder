@@ -1711,6 +1711,7 @@ def Heteroatom_Func_Add_OH(mol,input_3d=True):
     aromatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 1 and atom.GetIsAromatic() == True and atom.GetSymbol() == 'C'] 
     Chem.Kekulize(mol)
     if len(aromatic_Hs) > 0:
+        mol_new = deepcopy(mol)
         random.shuffle(aromatic_Hs)
         #choose one
         idx_modify = aromatic_Hs[0]
