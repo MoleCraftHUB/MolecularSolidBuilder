@@ -67,7 +67,7 @@ def Heteroatom_Func_Add_list(mol,Func_smi,input_3d=True):
         and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
     aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 3 and not atom.IsInRing()]
     aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and atom.IsInRing()]
-    Hs = aromatic_Hs + aliphatic_chain_Hs + aliphatic_ring_Hs
+    Hs = aromatic_Hs #+ aliphatic_chain_Hs + aliphatic_ring_Hs
 
     mol_list = []
     smi_list = []
@@ -93,8 +93,8 @@ def Heteroatom_Func_Add_list(mol,Func_smi,input_3d=True):
                 smi_list.append(smi)
         if input_3d:
             mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
-        else:
-            mol_list = [Embedfrom2Dto3D(AllChem.MolFromSmiles(smi)) for smi in smi_list]
+        #else:
+        #    mol_list = [Embedfrom2Dto3D(AllChem.MolFromSmiles(smi)) for smi in smi_list]
         return True, mol_list
     else:
         mol_list = [mol]
