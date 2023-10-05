@@ -97,7 +97,7 @@ def Heteroatom_Func_Add_list(mol,Func_smi,input_3d=True):
         #    mol_list = [Embedfrom2Dto3D(AllChem.MolFromSmiles(smi)) for smi in smi_list]
         return True, mol_list
     else:
-        mol_list = [mol]
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
         return False, mol_list
 
 
