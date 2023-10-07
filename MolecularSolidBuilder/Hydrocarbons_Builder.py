@@ -1453,7 +1453,7 @@ def Propagate(main,vertx,six_ring=False,five_ring=False,nbfive=0):
 
 	return new_mols
 
-def Intramolecular_Bond(mol):
+def Intramolecular_Bond(mol,restrictions = True):
 	test_mols = []
 	test_info = []
 
@@ -1525,12 +1525,14 @@ def Intramolecular_Bond(mol):
 				
 				rf2 = rem_H.GetRingInfo()
 				arf2 = rf2.AtomRings()
-				size_ring = len([c for c in arf2 if len(c) < 5]) #+ [c for c in arf2 if len(c) > 7])
 				flag = 0
-				#for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
-				#	if c1 > 0 and c2 == True:
-				#		flag += 1
-
+				size_ring = len([c for c in arf2 if len(c) < 5])
+				
+				if restrictions:
+					size_ring = len([c for c in arf2 if len(c) < 5] + [c for c in arf2 if len(c) > 7])
+					for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
+						if c1 > 0 and c2 == True:
+							flag += 1
 				if size_ring == 0 and flag == 0:
 					test_mols.append(rem_H)
 					test_info.append("Bonding %s %s" % (idx1,idx2))
