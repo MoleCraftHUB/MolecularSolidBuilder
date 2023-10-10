@@ -1537,3 +1537,87 @@ def Intramolecular_Bond(mol,restrictions = True):
 					test_mols.append(rem_H)
 					test_info.append("Bonding %s %s" % (idx1,idx2))
 	return test_mols, test_info
+
+
+def Intramolecular_Bond_v2(mol,restrictions = True):
+	test_mols = []
+	test_info = []
+
+	mol = AllChem.RemoveHs(mol)
+	atoms = mol.GetAtoms()
+	idx_wH = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() > 0]
+	nconnect_idxs = []
+	h_num_checks = []
+	for i in range(len(idx_wH)):
+		idx1 = idx_wH[i]
+		for j in range(i+1,len(idx_wH)):
+			idx2 = idx_wH[j]
+			connect_idx = AllChem.GetShortestPath(mol,idx1,idx2)
+			Dist3D = AllChem.Get3DDistanceMatrix(mol)
+			check_bonded = mol.GetBondBetweenAtoms(idx1,idx2)
+			rf = mol.GetRingInfo()
+			arf = rf.AtomRings()
+			check_ih = [atoms[iid].GetTotalNumHs() for iid in connect_idx]
+			check_ir = [atoms[iid].IsInRing() for iid in connect_idx]
+
+			sym1 = atoms[idx1].GetSymbol()
+			sym2 = atoms[idx2].GetSymbol()
+			
+			pair_exclude = ['OO','NN','SS']
+			flag_sym = ((sym1+sym2 in pair_exclude) or (sym2+sym1 in pair_exclude))
+			#print(Dist3D[idx1,idx2])
+			if (not flag_sym) and (Dist3D[idx1,idx2] < 4) and (check_bonded==None) and (not rf.AreAtomsInSameRing(idx1,idx2)):
+				mol_copy = copy.deepcopy(mol)
+				atoms_copy = mol_copy.GetAtoms()
+
+				edcombo = Chem.EditableMol(mol_copy)
+				edcombo.AddBond(idx1,idx2,order=Chem.rdchem.BondType.SINGLE)
+				back = edcombo.GetMol()
+
+				atoms2 = back.GetAtoms()
+				atoms2[idx1].SetNumExplicitHs(0)
+				atoms2[idx2].SetNumExplicitHs(0)
+
+				back_H = AllChem.AddHs(back,addCoords=True)
+				atoms2_H = back_H.GetAtoms()
+				hidxs1 = sorted([n.GetIdx() for n in atoms2_H[idx1].GetNeighbors() if n.GetSymbol() == 'H'],reverse=True)
+				hidxs2 = sorted([n.GetIdx() for n in atoms2_H[idx2].GetNeighbors() if n.GetSymbol() == 'H'],reverse=True)
+				em2 = Chem.EditableMol(back_H)
+				atomsToRemove = sorted([hidxs1[0],hidxs2[0]],reverse=True)
+				for idd in atomsToRemove:
+					em2.RemoveAtom(idd)
+				rem_H = em2.GetMol()
+				try:
+					rem = AllChem.RemoveHs(rem_H)
+					rem_H = AllChem.AddHs(rem,addCoords=True)
+					AllChem.Kekulize(rem_H)
+
+				except:
+					continue
+
+				pos_info = [[ai,rem_H.GetConformer().GetAtomPosition(ai)] for ai, aa in enumerate(rem_H.GetAtoms())]
+				pos = [[p.x,p.y,p.z] for atom_idx, p in pos_info]
+				dis_th = 8.0
+				check1 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx1]) if np.linalg.norm(dis_v) > dis_th]
+				check2 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx2]) if np.linalg.norm(dis_v) > dis_th]
+				constrain_idxs = sorted(set(check1+check2))
+				mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(rem_H)
+				ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(rem_H,mmffps)
+				for atidx in constrain_idxs:
+					ff.MMFFAddPositionConstraint(atidx,0.05,200)
+				ff.Minimize()
+				
+				rf2 = rem_H.GetRingInfo()
+				arf2 = rf2.AtomRings()
+				flag = 0
+				size_ring = len([c for c in arf2 if len(c) < 5])
+				
+				if restrictions:
+					size_ring = len([c for c in arf2 if len(c) < 5] + [c for c in arf2 if len(c) > 7])
+					for c1, c2 in zip(check_ih[1:-1],check_ir[1:-1]):
+						if c1 > 0 and c2 == True:
+							flag += 1
+				if size_ring == 0 and flag == 0:
+					test_mols.append(rem_H)
+					test_info.append("Bonding %s %s" % (idx1,idx2))
+	return test_mols, test_info
