@@ -1539,7 +1539,7 @@ def Intramolecular_Bond(mol,restrictions = True):
 	return test_mols, test_info
 
 
-def Intramolecular_Bond_v2(mol,restrictions = True):
+def Intramolecular_Bond_v2(mol,bdist=4,restrictions=True):
 	test_mols = []
 	test_info = []
 
@@ -1566,7 +1566,7 @@ def Intramolecular_Bond_v2(mol,restrictions = True):
 			pair_exclude = ['OO','NN','SS']
 			flag_sym = ((sym1+sym2 in pair_exclude) or (sym2+sym1 in pair_exclude))
 			#print(Dist3D[idx1,idx2])
-			if (not flag_sym) and (Dist3D[idx1,idx2] < 4) and (check_bonded==None) and (not rf.AreAtomsInSameRing(idx1,idx2)):
+			if (not flag_sym) and (Dist3D[idx1,idx2] <= bdist) and (check_bonded==None) and (not rf.AreAtomsInSameRing(idx1,idx2)):
 				mol_copy = copy.deepcopy(mol)
 				atoms_copy = mol_copy.GetAtoms()
 
