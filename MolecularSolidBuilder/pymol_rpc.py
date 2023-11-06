@@ -7,6 +7,8 @@ from rdkit.Chem import AllChem
 from rdkit import Chem
 from .Examine_CNMR_pymol import *
 
+#Up-to-data
+
 #!which pip
 #!pip install rdkit
 #!pip install ipywidgetse
@@ -91,7 +93,7 @@ class pymol_jupyter_builder:
         #self.server.do('orient')
         self.server.do('bg_color white')
         self.server.do('set sphere_scale, 0.2, (all)')
-        self.server.do('set_bond stick_radius, 0.6, (all), (all)')
+        self.server.do('set_bond stick_radius, 0.2, (all), (all)')
         self.server.do('color red,   elem o')
         self.server.do('color grey,  elem c')
         self.server.do('color white, elem h')
@@ -99,7 +101,7 @@ class pymol_jupyter_builder:
         self.server.do('color pink,  elem si')
         self.server.do('color green,  elem s')
         self.server.do('show sticks')
-        #self.server.do('show spheres')
+        self.server.do('show spheres')
         #self.server.do('set antialias,2')
         #self.server.do('set depth_cue,0')
         self.server.do('set ray_trace_mode,3')
@@ -109,7 +111,14 @@ class pymol_jupyter_builder:
     
     def command(self,cmd):
         self.server.do(cmd)
+    
+    def save_fig(self,pngfilename,size=(1280,1072)):
+        self.server.do('reset')
+        self.server.do('zoom all')
+        self.server.do('ray %d, %d, async=1' % (size[0],size[1]))
+        self.server.do('png %s, dpi=1000' % pngfilename)
 
+                       
     #Import files
     def file_import(self,file_paths,label=False):
         self.Grid_mode = False

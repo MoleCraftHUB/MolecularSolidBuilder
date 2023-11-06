@@ -2,7 +2,7 @@ import os, sys, subprocess, glob
 from rdkit.Chem import AllChem, Draw
 from rdkit import Chem
 from copy import deepcopy
-from .PDBfile_importer import PDBImageFileToMols
+from .PDBfile_Converter import PDBImageFileToMols
 
 def molwith_idx(mol):
 	for atom in mol.GetAtoms():

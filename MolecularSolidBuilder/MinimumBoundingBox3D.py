@@ -11,7 +11,6 @@ import itertools
 from rdkit.Chem.Draw import rdMolDraw2D
 from mpl_toolkits.mplot3d import Axes3D
 
-
 ### Minimum bounding box 3D
 def yaw(theta):
     theta = np.deg2rad(theta)

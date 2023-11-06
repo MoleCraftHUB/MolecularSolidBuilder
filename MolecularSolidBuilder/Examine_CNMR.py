@@ -13,7 +13,6 @@ from .Utility import Embedfrom2Dto3D, Plot_2Dmol, Plot_2Dmol_c
 from .Heteroatom_Exchanger import *
 
 ##### Get the type of carbons ######
-
 def mol_faH(mol):
     num_faH = 0
     mol = AllChem.RemoveHs(mol)

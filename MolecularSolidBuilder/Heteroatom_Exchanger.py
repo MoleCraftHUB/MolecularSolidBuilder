@@ -11,7 +11,6 @@ from .Utility import Embedfrom2Dto3D, Plot_2Dmol, Plot_2Dmol_tmp
 from .Hydrocarbons_Builder import *
 
 def Heteroatom_Func_Add_OH_list(mol,input_3d=True):
-
     mol = AllChem.RemoveHs(mol)
     mol_dup = deepcopy(mol)
     convex_bond_idx, convex_atom_idx = convex_bond_atom(mol_dup)
@@ -99,13 +98,6 @@ def Heteroatom_Func_Add_list(mol,Func_smi,input_3d=True):
     else:
         mol_list = [AllChem.AddHs(mol,addCoords=True)]
         return False, mol_list
-
-
-
-
-
-
-
 
 
 #---------------------------------------------

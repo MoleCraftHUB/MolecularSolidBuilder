@@ -8,7 +8,177 @@ import os, sys, glob, subprocess, copy
 from itertools import combinations
 import itertools
 from rdkit.Chem import rdForceFieldHelpers
+from rdkit.Chem.rdchem import HybridizationType
 
+def propagate_new(mol):
+    close_ring = [5,6]
+    ring_size = [5,6]
+    new_mols = []
+    smis = []
+    edges = Find_Vertex_v2(mol)
+    frgs_smis = ['C','C=C','C=CC','CC=C','C=CC=C','CC=CC=C','C=CC=CC','C=CC=CC=C']
+    frgs = [AllChem.MolFromSmiles(fs) for fs in frgs_smis]
+
+    for i, edge in enumerate(edges):
+        if len(edge) == 2:
+            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+            for frg in frgs_screen:
+                new_mol = two_bonds_with_fragment(mol,frg,edge)
+                new_mols.append(new_mol)
+                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+
+        if len(edge) == 3:
+            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+            for frg in frgs_screen:
+                new_mol = two_bonds_with_fragment(mol,frg,edge)
+                new_mols.append(new_mol)
+                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+        if len(edge) == 4:
+            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+            for frg in frgs_screen:
+                new_mol = two_bonds_with_fragment(mol,frg,edge)
+                new_mols.append(new_mol)
+                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+        if len(edge) == 5:
+            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+            for frg in frgs_screen:
+                new_mol = two_bonds_with_fragment(mol,frg,edge)
+                new_mols.append(new_mol)
+                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+            new_mol = single_bonds(mol,edge)
+            new_mols.append(new_mol)
+            smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+
+        if len(edge) == 6:
+            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+            for frg in frgs_screen:
+                new_mol = two_bonds_with_fragment(mol,frg,edge)
+                new_mols.append(new_mol)
+                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+            new_mol = single_bonds(mol,edge)
+            new_mols.append(new_mol)
+            smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+
+    smis = list(set(smis))
+    new_mols = [AllChem.MolFromSmiles(smi) for smi in smis]
+    return new_mols
+
+
+def single_bonds(mol,edge):
+	#Able to deal with cove and fjord region
+
+	mol = AllChem.RemoveHs(mol)
+	combH = AllChem.AddHs(mol,addCoords=True)
+	atoms_combH = combH.GetAtoms()
+	connect = False
+	edge1 = edge[0]
+	edge2 = edge[-1]
+	hidxs1_mol = [n.GetIdx() for n in atoms_combH[edge1].GetNeighbors() if n.GetSymbol() == 'H']
+	hidxs2_mol = [n.GetIdx() for n in atoms_combH[edge2].GetNeighbors() if n.GetSymbol() == 'H']
+
+	h_remove = []
+	EAddFrg = AllChem.EditableMol(combH)
+
+	if (len(hidxs1_mol) >= 2) and (len(hidxs2_mol) >= 2):
+		EAddFrg.AddBond(edge1,edge2,order=Chem.rdchem.BondType.DOUBLE)
+		for hi in range(2):
+			h_remove.append(hidxs1_mol[-1])
+			hidxs1_mol.remove(hidxs1_mol[-1])
+			h_remove.append(hidxs2_mol[-1])
+			hidxs2_mol.remove(hidxs2_mol[-1])
+		connect = True
+	else:
+		EAddFrg.AddBond(edge1,edge2,order=Chem.rdchem.BondType.SINGLE)
+		for hi in range(1):
+			h_remove.append(hidxs1_mol[-1])
+			hidxs1_mol.remove(hidxs1_mol[-1])
+			h_remove.append(hidxs2_mol[-1])
+			hidxs2_mol.remove(hidxs2_mol[-1])
+		connect = True
+
+	h_remove = sorted(h_remove,reverse=True)
+
+	for h_idx in h_remove:
+		EAddFrg.RemoveAtom(h_idx)
+	mol_new = EAddFrg.GetMol()
+	AllChem.EmbedMolecule(mol_new)
+	AllChem.MMFFOptimizeMolecule(mol_new, mmffVariant='MMFF94s')
+	return mol_new
+
+def two_bonds_with_fragment(mol,frg,edge):
+	#Able to deal with cove, K-region, L-region, bay region with additional fragments
+
+	mol = AllChem.RemoveHs(mol)
+	frg = AllChem.RemoveHs(frg)
+
+	atoms_mol = mol.GetAtoms()
+	atoms_frg = frg.GetAtoms()
+	frg_idx =  [int(ids) for ids in np.arange(len(atoms_frg)) + len(atoms_mol)]
+	comb = Chem.CombineMols(mol,frg)
+	combH = AllChem.AddHs(comb,addCoords=True)
+	atoms_combH = combH.GetAtoms()
+
+	edge1_hyb = atoms_combH[edge[0]].GetHybridization()
+	edge2_hyb = atoms_combH[edge[-1]].GetHybridization()
+	frg1_hyb = atoms_combH[frg_idx[0]].GetHybridization()
+	frg2_hyb = atoms_combH[frg_idx[-1]].GetHybridization()
+
+	hidxs1_mol = [n.GetIdx() for n in atoms_combH[edge[0]].GetNeighbors() if n.GetSymbol() == 'H']
+	hidxs2_mol = [n.GetIdx() for n in atoms_combH[edge[-1]].GetNeighbors() if n.GetSymbol() == 'H']
+	hidxs1_frg = [n.GetIdx() for n in atoms_combH[frg_idx[0]].GetNeighbors() if n.GetSymbol() == 'H']
+	hidxs2_frg = [n.GetIdx() for n in atoms_combH[frg_idx[-1]].GetNeighbors() if n.GetSymbol() == 'H']
+
+	if len(atoms_frg) == 1:
+		hidxs1_frg = hidxs2_frg
+
+	#print("edge1",atoms_combH[edge[0]].GetHybridization(),len(hidxs1_mol))
+	#print("edge2",atoms_combH[edge[-1]].GetHybridization(),len(hidxs2_mol))
+	#print("frg1",atoms_combH[frg_idx[0]].GetHybridization(),len([n.GetIdx() for n in atoms_combH[frg_idx[0]].GetNeighbors() if n.GetSymbol() == 'H']),frg_idx[0])
+	#print("frg2",atoms_combH[frg_idx[-1]].GetHybridization(),len([n.GetIdx() for n in atoms_combH[frg_idx[-1]].GetNeighbors() if n.GetSymbol() == 'H']),frg_idx[-1])
+
+	h_remove = []
+	EAddFrg = AllChem.EditableMol(combH)
+	#print(edge1_hyb, edge2_hyb, frg1_hyb, frg2_hyb)
+	if ((edge1_hyb == HybridizationType.SP3) and (frg1_hyb == HybridizationType.SP3) and (frg_idx[0]!=frg_idx[-1]) and (len(hidxs1_mol)>=2) and (len(hidxs1_frg)>=2)):
+		EAddFrg.AddBond(edge[0],frg_idx[0],order=Chem.rdchem.BondType.DOUBLE)
+		for hi in range(2):
+			h_remove.append(hidxs1_mol[-1])
+			hidxs1_mol.remove(hidxs1_mol[-1])
+			h_remove.append(hidxs1_frg[-1])
+			hidxs1_frg.remove(hidxs1_frg[-1])
+		
+	else:
+		EAddFrg.AddBond(edge[0],frg_idx[0],order=Chem.rdchem.BondType.SINGLE)
+		for hi in range(1):
+			h_remove.append(hidxs1_mol[-1])
+			hidxs1_mol.remove(hidxs1_mol[-1])
+			h_remove.append(hidxs1_frg[-1])
+			hidxs1_frg.remove(hidxs1_frg[-1])
+
+	if ((edge2_hyb == HybridizationType.SP3) and (frg2_hyb == HybridizationType.SP3) and (frg_idx[0]!=frg_idx[-1]) and (len(hidxs2_mol)>=2) and (len(hidxs2_frg)>=2)):
+		EAddFrg.AddBond(edge[-1],frg_idx[-1],order=Chem.rdchem.BondType.DOUBLE)
+		for hi in range(2):
+			h_remove.append(hidxs2_mol[-1])
+			hidxs2_mol.remove(hidxs2_mol[-1])
+			h_remove.append(hidxs2_frg[-1])
+			hidxs2_frg.remove(hidxs2_frg[-1])
+	
+	else:
+		EAddFrg.AddBond(edge[-1],frg_idx[-1],order=Chem.rdchem.BondType.SINGLE)
+		for hi in range(1):
+			h_remove.append(hidxs2_mol[-1])
+			hidxs2_mol.remove(hidxs2_mol[-1])
+			h_remove.append(hidxs2_frg[-1])
+			hidxs2_frg.remove(hidxs2_frg[-1])
+	h_remove = sorted(h_remove,reverse=True)
+
+	for h_idx in h_remove:
+		EAddFrg.RemoveAtom(h_idx)
+	mol_new = EAddFrg.GetMol()
+	AllChem.EmbedMolecule(mol_new)
+	AllChem.MMFFOptimizeMolecule(mol_new, mmffVariant='MMFF94s')
+	#Constrained optimization?
+	return mol_new
 
 def arylbond_combine(mol1,mol2):
 	
@@ -400,7 +570,7 @@ def Propagate_v2(main,vertx,six_ring=False,five_ring=False,nbfive=0):
 				sms = ["[CH1][CH1]","[CH1]"]
 		elif len(v) == 5: #case4
 			if six_ring and not five_ring:
-				sms = ["[CH1]"]
+				sms = ["[CH1]","[CH2]"]
 			else:
 				sms = []
 		elif len(v) == 6: #case5
@@ -1453,7 +1623,7 @@ def Propagate(main,vertx,six_ring=False,five_ring=False,nbfive=0):
 
 	return new_mols
 
-def Intramolecular_Bond(mol,restrictions = True):
+def Intramolecular_Bond(mol,restrictions=True,constrained_opt=True):
 	test_mols = []
 	test_info = []
 
@@ -1510,19 +1680,20 @@ def Intramolecular_Bond(mol,restrictions = True):
 
 				except:
 					continue
-
-				pos_info = [[ai,rem_H.GetConformer().GetAtomPosition(ai)] for ai, aa in enumerate(rem_H.GetAtoms())]
-				pos = [[p.x,p.y,p.z] for atom_idx, p in pos_info]
-				dis_th = 8.0
-				check1 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx1]) if np.linalg.norm(dis_v) > dis_th]
-				check2 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx2]) if np.linalg.norm(dis_v) > dis_th]
-				constrain_idxs = sorted(set(check1+check2))
-				mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(rem_H)
-				ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(rem_H,mmffps)
-				for atidx in constrain_idxs:
-					ff.MMFFAddPositionConstraint(atidx,0.05,200)
-				ff.Minimize()
 				
+				if constrained_opt:
+					pos_info = [[ai,rem_H.GetConformer().GetAtomPosition(ai)] for ai, aa in enumerate(rem_H.GetAtoms())]
+					pos = [[p.x,p.y,p.z] for atom_idx, p in pos_info]
+					dis_th = 8.0
+					check1 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx1]) if np.linalg.norm(dis_v) > dis_th]
+					check2 = [vi for vi,dis_v in enumerate(np.array(pos) - pos[idx2]) if np.linalg.norm(dis_v) > dis_th]
+					constrain_idxs = sorted(set(check1+check2))
+					mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(rem_H)
+					ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(rem_H,mmffps)
+					for atidx in constrain_idxs:
+						ff.MMFFAddPositionConstraint(atidx,0.05,200)
+					ff.Minimize()
+					
 				rf2 = rem_H.GetRingInfo()
 				arf2 = rf2.AtomRings()
 				flag = 0
