@@ -62,7 +62,7 @@ def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=Fal
 		new_mols2 = []
 		for new_mol in new_mols:
 			mol_t=AllChem.RemoveHs(mol)
-			new_mol_t = AllChem.RemoveHs(new_mol)
+			new_mol_t = AllChem.MolFromSmiles(AllChem.MolToSmiles(new_mol))
 			test = AllChem.ConstrainedEmbed(new_mol_t, mol_t)
 			new_mols2.append(test)
 		new_mols = new_mols2
