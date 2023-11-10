@@ -10,58 +10,87 @@ import itertools
 from rdkit.Chem import rdForceFieldHelpers
 from rdkit.Chem.rdchem import HybridizationType
 
-def propagate_new(mol):
-    close_ring = [5,6]
-    ring_size = [5,6]
-    new_mols = []
-    smis = []
-    edges = Find_Vertex_v2(mol)
-    frgs_smis = ['C','C=C','C=CC','CC=C','C=CC=C','CC=CC=C','C=CC=CC','C=CC=CC=C']
-    frgs = [AllChem.MolFromSmiles(fs) for fs in frgs_smis]
+def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=False,close_ring=[5,6],ring_size=[6]):
+	new_mols = []
+	smis = []
+	unique = {}
+	edges = Find_Vertex_v2(mol)
+	frgs_smis = ['C','C=C','C=CC','CC=C','C=CC=C','CC=CC=C','C=CC=CC','C=CC=CC=C']
+	frgs = [AllChem.MolFromSmiles(fs) for fs in frgs_smis]
 
-    for i, edge in enumerate(edges):
-        if len(edge) == 2:
-            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
-            for frg in frgs_screen:
-                new_mol = two_bonds_with_fragment(mol,frg,edge)
-                new_mols.append(new_mol)
-                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+	for i, edge in enumerate(edges):
+		if len(edge) == 2:
+			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			for frg in frgs_screen:
+				new_mol = two_bonds_with_fragment(mol,frg,edge)
+				new_mols.append(new_mol)
+				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 
-        if len(edge) == 3:
-            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
-            for frg in frgs_screen:
-                new_mol = two_bonds_with_fragment(mol,frg,edge)
-                new_mols.append(new_mol)
-                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-        if len(edge) == 4:
-            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
-            for frg in frgs_screen:
-                new_mol = two_bonds_with_fragment(mol,frg,edge)
-                new_mols.append(new_mol)
-                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-        if len(edge) == 5:
-            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
-            for frg in frgs_screen:
-                new_mol = two_bonds_with_fragment(mol,frg,edge)
-                new_mols.append(new_mol)
-                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-            new_mol = single_bonds(mol,edge)
-            new_mols.append(new_mol)
-            smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+		if len(edge) == 3:
+			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			for frg in frgs_screen:
+				new_mol = two_bonds_with_fragment(mol,frg,edge)
+				new_mols.append(new_mol)
+				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+		if len(edge) == 4:
+			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			for frg in frgs_screen:
+				new_mol = two_bonds_with_fragment(mol,frg,edge)
+				new_mols.append(new_mol)
+				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+		if len(edge) == 5:
+			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			for frg in frgs_screen:
+				new_mol = two_bonds_with_fragment(mol,frg,edge)
+				new_mols.append(new_mol)
+				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+			new_mol = single_bonds(mol,edge)
+			new_mols.append(new_mol)
+			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 
-        if len(edge) == 6:
-            frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
-            for frg in frgs_screen:
-                new_mol = two_bonds_with_fragment(mol,frg,edge)
-                new_mols.append(new_mol)
-                smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-            new_mol = single_bonds(mol,edge)
-            new_mols.append(new_mol)
-            smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+		if len(edge) == 6:
+			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			for frg in frgs_screen:
+				new_mol = two_bonds_with_fragment(mol,frg,edge)
+				new_mols.append(new_mol)
+				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
+			new_mol = single_bonds(mol,edge)
+			new_mols.append(new_mol)
+			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 
-    smis = list(set(smis))
-    new_mols = [AllChem.MolFromSmiles(smi) for smi in smis]
-    return new_mols
+	if constrained_opt_v1:
+		new_mols2 = []
+		for new_mol in new_mols:
+			mol_t=AllChem.RemoveHs(mol)
+			new_mol_t = AllChem.RemoveHs(new_mol)
+			test = AllChem.ConstrainedEmbed(new_mol_t, mol_t)
+			new_mols2.append(test)
+		new_mols = new_mols2
+		
+	if constrained_opt_v2:
+		new_mols2 = []
+		for new_mol in new_mols:
+			mol_t=AllChem.RemoveHs(mol)
+			new_mol_t = AllChem.RemoveHs(new_mol)
+			constrain_idxs = [atom.GetIdx() for atom in mol_t.GetAtoms()]
+			pos_info = [[ai,new_mol_t.GetConformer().GetAtomPosition(ai)] for ai, aa in enumerate(new_mol_t.GetAtoms())]
+			pos = [[p.x,p.y,p.z] for atom_idx, p in pos_info]
+			mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(new_mol_t)
+			ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(new_mol_t,mmffps)
+			for atidx in constrain_idxs:
+				ff.MMFFAddPositionConstraint(atidx,0.05,200)
+			ff.Minimize()
+			#new_mol_t = AllChem.AddHs(new_mol_t,addCoords=True)
+			new_mols2.append(new_mol_t)
+		new_mols = new_mols2
+
+	if reduce:
+		for new_mol in new_mols:
+			unique[AllChem.MolToSmiles(new_mol)] = new_mol
+		new_mols = list(unique.values())
+
+	new_mols = [AllChem.AddHs(new_mol,addCoords=True) for new_mol in new_mols]
+	return new_mols
 
 
 def single_bonds(mol,edge):

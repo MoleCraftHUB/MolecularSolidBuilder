@@ -129,7 +129,6 @@ def Get3DMinimumBoundingBox(pdb_string,format='pdb'):
 
     if format == 'pdb':
         positions = ReadPositionInPDBfile(pdb_string)
-        print(positions, len(positions))
         new_positions, new_box_info = Minimum_Bounding_Box_3D(positions)
         new_pdb_string = UpdatePositionInPDBfile(pdb_string, new_positions, new_box_info)
 
