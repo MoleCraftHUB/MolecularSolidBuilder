@@ -65,7 +65,7 @@ def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=Fal
 			#new_mol_t = AllChem.MolFromSmiles(AllChem.MolToSmiles(new_mol))
 			AllChem.EmbedMolecule(new_mol, useRandomCoords=False, useBasicKnowledge=False)
 			AllChem.MMFFOptimizeMolecule(new_mol, mmffVariant='MMFF94s',nonBondedThresh=1000)
-			new_mol_t = AllChem.RemoveHs(new_mol_t)
+			new_mol_t = AllChem.RemoveHs(new_mol)
 			test = AllChem.ConstrainedEmbed(new_mol_t, mol_t)
 			new_mols2.append(test)
 		new_mols = new_mols2
