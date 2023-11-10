@@ -116,7 +116,7 @@ def UpdatePositionInPDBfile(pdb_string, positions, box_info):
             pdb_string += 'END #3DBOX %4.3f %4.3f %4.3f' % (box_info[0][1],box_info[1][1],box_info[2][1])
         elif 'HETATM' in line:
             lt = line.split()
-            print(lt)
+            print(lt,positions[i])
             lt[5] = "%5.3f" % positions[i][0]
             lt[6] = "%5.3f" % positions[i][1]
             lt[7] = "%5.3f" % positions[i][2]
