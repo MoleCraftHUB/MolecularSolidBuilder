@@ -9,15 +9,18 @@ from itertools import combinations
 import itertools
 from rdkit.Chem import rdForceFieldHelpers
 from rdkit.Chem.rdchem import HybridizationType
+from rdkit.Geometry import Point3D
+from rdkit.Chem.rdMolTransforms import ComputeCentroid
 
-def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=False,close_ring=[5,6],ring_size=[6]):
+def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_size=[6]):
 	new_mols = []
 	smis = []
 	unique = {}
 	edges = Find_Vertex_v2(mol)
 	frgs_smis = ['C','C=C','C=CC','CC=C','C=CC=C','CC=CC=C','C=CC=CC','C=CC=CC=C']
 	frgs = [AllChem.MolFromSmiles(fs) for fs in frgs_smis]
-
+	mol_idx = [atom.GetIdx() for atom in AllChem.RemoveHs(mol).GetAtoms()]
+	mol_pos = [mol.GetConformer().GetAtomPosition(ai) for ai, aa in enumerate(mol.GetAtoms())]
 	for i, edge in enumerate(edges):
 		if len(edge) == 2:
 			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
@@ -25,7 +28,6 @@ def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=Fal
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-
 		if len(edge) == 3:
 			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
 			for frg in frgs_screen:
@@ -47,7 +49,6 @@ def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=Fal
 			new_mol = single_bonds(mol,edge)
 			new_mols.append(new_mol)
 			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-
 		if len(edge) == 6:
 			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
 			for frg in frgs_screen:
@@ -58,41 +59,18 @@ def propagate_new(mol,reduce=True,constrained_opt_v1=True,constrained_opt_v2=Fal
 			new_mols.append(new_mol)
 			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 
-	if constrained_opt_v1:
-		new_mols2 = []
-		for new_mol in new_mols:
-			mol_t=AllChem.RemoveHs(mol)
-			#new_mol_t = AllChem.MolFromSmiles(AllChem.MolToSmiles(new_mol))
-			AllChem.EmbedMolecule(new_mol, useRandomCoords=False, useBasicKnowledge=False)
-			AllChem.MMFFOptimizeMolecule(new_mol, mmffVariant='MMFF94s',nonBondedThresh=1000)
-			new_mol_t = AllChem.RemoveHs(new_mol)
-			test = AllChem.ConstrainedEmbed(new_mol_t, mol_t)
-			new_mols2.append(test)
-		new_mols = new_mols2
-		
-	if constrained_opt_v2:
-		new_mols2 = []
-		for new_mol in new_mols:
-			mol_t=AllChem.RemoveHs(mol)
-			new_mol_t = AllChem.RemoveHs(new_mol)
-			constrain_idxs = [atom.GetIdx() for atom in mol_t.GetAtoms()]
-			pos_info = [[ai,new_mol_t.GetConformer().GetAtomPosition(ai)] for ai, aa in enumerate(new_mol_t.GetAtoms())]
-			pos = [[p.x,p.y,p.z] for atom_idx, p in pos_info]
-			mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(new_mol_t)
-			ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(new_mol_t,mmffps)
-			for atidx in constrain_idxs:
-				ff.MMFFAddPositionConstraint(atidx,0.05,200)
-			ff.Minimize()
-			#new_mol_t = AllChem.AddHs(new_mol_t,addCoords=True)
-			new_mols2.append(new_mol_t)
-		new_mols = new_mols2
-
+	for j, new_mol in enumerate(new_mols):
+		flag = AllChem.RemoveHs(new_mol).HasSubstructMatch(AllChem.RemoveHs(mol))
+		atom_idx = AllChem.RemoveHs(new_mol).GetSubstructMatch(AllChem.RemoveHs(mol))
+		#print(flag, atom_idx)
+		#Draw.MolToImageFile(new_mol,'test_%d.png' % (j+1),highlightAtoms=mol_idx)
 	if reduce:
 		for new_mol in new_mols:
 			unique[AllChem.MolToSmiles(new_mol)] = new_mol
 		new_mols = list(unique.values())
 
-	new_mols = [AllChem.AddHs(new_mol,addCoords=True) for new_mol in new_mols]
+	#new_mols = [AllChem.AddHs(new_mol,addCoords=True) for new_mol in new_mols]
+	new_mols = [AllChem.RemoveHs(new_mol) for new_mol in new_mols]
 	return new_mols
 
 
@@ -133,18 +111,38 @@ def single_bonds(mol,edge):
 	for h_idx in h_remove:
 		EAddFrg.RemoveAtom(h_idx)
 	mol_new = EAddFrg.GetMol()
-	AllChem.EmbedMolecule(mol_new)
+	#AllChem.EmbedMolecule(mol_new)
 	AllChem.MMFFOptimizeMolecule(mol_new, mmffVariant='MMFF94s')
+	mol_new = AllChem.RemoveHs(mol_new)
 	return mol_new
 
 def two_bonds_with_fragment(mol,frg,edge):
 	#Able to deal with cove, K-region, L-region, bay region with additional fragments
 
 	mol = AllChem.RemoveHs(mol)
+	mol_idx = [atom.GetIdx() for atom in AllChem.RemoveHs(mol).GetAtoms()]
+	mol_edge_ave_positions = np.mean(np.array([mol.GetConformer().GetAtomPosition(eg) for eg in edge]),axis=0)
+	mol_center = np.array(ComputeCentroid(mol.GetConformer()))
+	v = mol_edge_ave_positions - mol_center
+	final_point = 2*v + mol_center
+
+	frg = AllChem.AddHs(frg)
+	AllChem.EmbedMolecule(frg, useRandomCoords=False, useBasicKnowledge=False)
+	AllChem.MMFFOptimizeMolecule(frg, mmffVariant='MMFF94s',nonBondedThresh=1000)
 	frg = AllChem.RemoveHs(frg)
+	frg_center = np.array(ComputeCentroid(frg.GetConformer()))
+	dis = frg_center - final_point
+	frg_pos = [frg.GetConformer().GetAtomPosition(ai) for ai, aa in enumerate(frg.GetAtoms())]
+	frg_new = [np.array(p)-dis for p in frg_pos]
+	conf = frg.GetConformer()
+	for i, ap in enumerate(frg_new):
+		x,y,z = ap
+		conf.SetAtomPosition(i,Point3D(x,y,z))
+	frg_center = np.array(ComputeCentroid(frg.GetConformer()))
 
 	atoms_mol = mol.GetAtoms()
 	atoms_frg = frg.GetAtoms()
+
 	frg_idx =  [int(ids) for ids in np.arange(len(atoms_frg)) + len(atoms_mol)]
 	comb = Chem.CombineMols(mol,frg)
 	combH = AllChem.AddHs(comb,addCoords=True)
@@ -162,11 +160,6 @@ def two_bonds_with_fragment(mol,frg,edge):
 
 	if len(atoms_frg) == 1:
 		hidxs1_frg = hidxs2_frg
-
-	#print("edge1",atoms_combH[edge[0]].GetHybridization(),len(hidxs1_mol))
-	#print("edge2",atoms_combH[edge[-1]].GetHybridization(),len(hidxs2_mol))
-	#print("frg1",atoms_combH[frg_idx[0]].GetHybridization(),len([n.GetIdx() for n in atoms_combH[frg_idx[0]].GetNeighbors() if n.GetSymbol() == 'H']),frg_idx[0])
-	#print("frg2",atoms_combH[frg_idx[-1]].GetHybridization(),len([n.GetIdx() for n in atoms_combH[frg_idx[-1]].GetNeighbors() if n.GetSymbol() == 'H']),frg_idx[-1])
 
 	h_remove = []
 	EAddFrg = AllChem.EditableMol(combH)
@@ -206,10 +199,14 @@ def two_bonds_with_fragment(mol,frg,edge):
 
 	for h_idx in h_remove:
 		EAddFrg.RemoveAtom(h_idx)
-	mol_new = EAddFrg.GetMol()
-	AllChem.EmbedMolecule(mol_new)
-	AllChem.MMFFOptimizeMolecule(mol_new, mmffVariant='MMFF94s')
-	#Constrained optimization?
+	mol_new = EAddFrg.GetMol()	
+	mmffps = rdForceFieldHelpers.MMFFGetMoleculeProperties(mol_new)
+	ff = rdForceFieldHelpers.MMFFGetMoleculeForceField(mol_new,mmffps)
+	for atidx in mol_idx:
+		ff.MMFFAddPositionConstraint(atidx,0.05,200)
+	ff.Minimize()
+	
+	mol_new = AllChem.RemoveHs(mol_new)
 	return mol_new
 
 def arylbond_combine(mol1,mol2):
