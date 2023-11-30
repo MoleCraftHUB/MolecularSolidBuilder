@@ -12,6 +12,9 @@ import numpy as np
 from .Utility import Embedfrom2Dto3D, Plot_2Dmol, Plot_2Dmol_c
 from .Heteroatom_Exchanger import *
 
+
+
+
 ##### Get the type of carbons ######
 def mol_faH(mol):
     num_faH = 0
@@ -254,7 +257,10 @@ def mol_fal(mol):
     fal_idx9_1 = [atom.GetIdx() for atom in atoms \
         if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and atom.IsInRing() and atom.GetTotalNumHs() == 0 \
         and len([n.GetSymbol() for n in atom.GetNeighbors()]) == 3]
-    
+
+    fal_idx9_2 = [atom.GetIdx() for atom in atoms \
+        if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and (not atom.IsInRing()) and atom.GetTotalNumHs() == 0 \
+        and len([n.GetSymbol() for n in atom.GetNeighbors()]) == 4]
 
     fal_idx10 = [atom.GetIdx() for atom in atoms \
         if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and not atom.IsInRing() and atom.GetTotalNumHs() <= 1 \
@@ -264,7 +270,7 @@ def mol_fal(mol):
         if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and not atom.IsInRing() and atom.GetTotalNumHs() == 2 \
             and len([n for n in atom.GetNeighbors()]) == 1]
 
-    fal_idx = fal_idx1 + fal_idx2 + fal_idx3 + fal_idx4 + fal_idx5 + fal_idx6 + fal_idx7 + fal_idx8 + fal_idx9 + fal_idx9_1 + fal_idx10 + fal_idx11
+    fal_idx = fal_idx1 + fal_idx2 + fal_idx3 + fal_idx4 + fal_idx5 + fal_idx6 + fal_idx7 + fal_idx8 + fal_idx9 + fal_idx9_1 + fal_idx9_2 + fal_idx10 + fal_idx11
     fal_idx = list(set(fal_idx))
     num_faC, faC_idx = mol_faC(mol)
     fal_idx = [idx for idx in fal_idx if idx not in faC_idx]
@@ -310,8 +316,15 @@ def mol_falas(mol): #CH3 or nonprotonated
     fal_idx9 = [atom.GetIdx() for atom in atoms \
         if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and not atom.IsInRing() and atom.GetTotalNumHs() == 0 \
             and len([n for n in atom.GetNeighbors()]) == 3]
+    fal_idx10 = [atom.GetIdx() for atom in atoms \
+        if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and not atom.IsInRing() and atom.GetTotalNumHs() == 0 \
+            and len([n for n in atom.GetNeighbors()]) == 4]
+    
+    # Check
+    fal_idx11= [atom.GetIdx() for atom in atoms \
+        if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and atom.IsInRing() and atom.GetTotalNumHs() == 0]
 
-    fal_idx = fal_idx1 + fal_idx2 + fal_idx3 + fal_idx4 + fal_idx5 + fal_idx6 + fal_idx7 + fal_idx8 +fal_idx9
+    fal_idx = fal_idx1 + fal_idx2 + fal_idx3 + fal_idx4 + fal_idx5 + fal_idx6 + fal_idx7 + fal_idx8 +fal_idx9 + fal_idx10 + fal_idx11
     fal_idx = list(set(fal_idx))
     num_faC, faC_idx = mol_faC(mol)
     fal_idx = [idx for idx in fal_idx if idx not in faC_idx]
@@ -349,8 +362,12 @@ def mol_falH(mol): #CH or CH2
     fal_idx6 = [atom.GetIdx() for atom in atoms \
         if atom.GetSymbol() == 'C' and not atom.GetIsAromatic() and not atom.IsInRing() and atom.GetTotalNumHs() == 2 \
             and len([n for n in atom.GetNeighbors()]) == 1]
+    fal_idx7 = [atom.GetIdx() for atom in atoms \
+        if not atom.GetIsAromatic() and atom.GetSymbol() == 'C' and atom.GetTotalNumHs() == 1 \
+        and len([n for n in atom.GetNeighbors() if n.GetSymbol() =='O' and not n.IsInRing() and len(n.GetNeighbors())<=2]) == 1 \
+        and len([b.GetBeginAtom() for b in atom.GetBonds() if (b.GetBeginAtom().GetSymbol()=='O' or b.GetEndAtom().GetSymbol()=='O') and b.GetBondTypeAsDouble() == 1])==1]
 
-    fal_idx = fal_idx0 + fal_idx1 + fal_idx2 + fal_idx3 + fal_idx4 + fal_idx5 + fal_idx6
+    fal_idx = fal_idx0 + fal_idx1 + fal_idx2 + fal_idx3 + fal_idx4 + fal_idx5 + fal_idx6 + fal_idx7
     fal_idx = list(set(fal_idx))
     num_fal = len(fal_idx)
     return num_fal, fal_idx
@@ -439,7 +456,8 @@ def carbon_nmr(mols, draw=False):
     faN = (faP + faS + faB)
     fapr = faN + faH
 
-    result = {'fapr':fapr/total_c,
+    result = {'fa':(fapr+faC)/total_c,
+              'fapr':fapr/total_c,
               'faN':faN/total_c,
               'faH':faH/total_c,
               'faP':faP/total_c,

@@ -9,63 +9,172 @@ from .Hydrocarbons_Builder import convex_bond_atom, Find_Vertex_v2
 import numpy as np
 from .Utility import Embedfrom2Dto3D, Plot_2Dmol, Plot_2Dmol_tmp
 from .Hydrocarbons_Builder import *
+from rdkit.Chem.rdchem import HybridizationType, BondType, PeriodicTable
 
-def Heteroatom_Func_Add_OH_list(mol,input_3d=True):
-    mol = AllChem.RemoveHs(mol)
-    mol_dup = deepcopy(mol)
-    convex_bond_idx, convex_atom_idx = convex_bond_atom(mol_dup)
-    atoms = mol_dup.GetAtoms()
-    aromatic_Hs = [atom.GetIdx() for atom in atoms \
-        if atom.GetTotalNumHs() == 1 and atom.IsInRing() \
-        and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
-    aliphatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 3 and not atom.IsInRing()]
-    Hs = aromatic_Hs
-    if len(Hs) > 0:
-        Hs = aromatic_Hs
+def Heteroatom_Func_Sub_Phenolic_OtoS(mol):
+    mol = deepcopy(mol)
+    atoms = mol.GetAtoms()
+    Os = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 0 and not atom.GetIsAromatic() \
+          and atom.GetSymbol() == 'O' and len([n for n in atom.GetNeighbors() if n.GetSymbol()=='C' and n.GetIsAromatic()]) == 1] 
+    Chem.Kekulize(mol)
+    if len(Os) > 0:
+        random.shuffle(Os)
+        #choose one
+        idx_modify = Os[0]
+        neighbor = [n.GetIdx() for n in atoms[idx_modify].GetNeighbors() if n.GetSymbol() == 'C' and n.GetIsAromatic()]
+        if len(neighbor) == 1:
+            atoms[idx_modify].SetAtomicNum(16)
+        atoms_comb = mol.GetAtoms()
+        mol = AllChem.RemoveHs(mol)
+        return True, mol
     else:
-        Hs = aliphatic_Hs
-    #Chem.Kekulize(mol_dup)
+        mol = AllChem.RemoveHs(mol)
+        return False, mol
+
+
+def num_5ringO(mol):
+    mol = deepcopy(mol)
+    atoms = mol.GetAtoms()
+    atom_idx = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 0 and atom.GetSymbol() == 'O' and (atom.IsInRingSize(5))]
+    return atom_idx
+
+def Add_OH_tofaC(mol,input_3d=False):
+    mol = AllChem.RemoveHs(mol)
+    AllChem.Kekulize(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    
+    Hs = []
+    for atom in atoms:
+        sym = atom.GetSymbol()
+        idx = atom.GetIdx()
+        num_H = atom.GetTotalNumHs()
+        nn_sym = [n.GetSymbol() for n in atom.GetNeighbors()]
+        nn_o_idx = [n.GetIdx() for n in atom.GetNeighbors() if n.GetSymbol() == 'O']
+        nn_bond_type = [mol_dup.GetBondBetweenAtoms(idx,o_idx).GetBondType() for o_idx in nn_o_idx]
+        in_ring = atom.IsInRing()
+        if (sym == 'C') and (num_H==1) and (len(nn_bond_type)==1) and (nn_bond_type[0] == BondType.DOUBLE):
+            Hs.append(idx)
 
     mol_list = []
     smi_list = []
     if len(Hs) > 0:
         for idx_modify in Hs:
-            #mol_dup = AllChem.RemoveHs(mol_dup)
-            atoms = mol_dup.GetAtoms()
-            atoms[idx_modify].SetNumExplicitHs(0)
+            atoms = mol_dup.GetAtoms()            
             Func = AllChem.MolFromSmiles('O')
             Func_atoms = Func.GetAtoms()
-            Func_atoms[0].SetNoImplicit(True)
-            Func_atoms[0].SetNumExplicitHs(1)
-            Func_idx = np.array([0]) + len(atoms)
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
             AddFunc = Chem.CombineMols(mol_dup,Func)
-            EAddFunc = AllChem.EditableMol(AddFunc)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
             EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
             mol_new = EAddFunc.GetMol()
             smi = AllChem.MolToSmiles(mol_new)
             if smi not in smi_list:
                 smi_list.append(smi)
         if input_3d:
-            mol_list = [AllChem.ConstrainedEmbed(AllChem.MolFromSmiles(smi), mol_dup) for smi in smi_list]
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
         else:
-            mol_list = [Embedfrom2Dto3D(AllChem.MolFromSmiles(smi)) for smi in smi_list]
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
         return True, mol_list
     else:
-        mol_list = [mol]
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
         return False, mol_list
 
-# Testing
-def Heteroatom_Func_Add_list(mol,Func_smi,input_3d=True):
 
+def Single2Double(mol):
+    mol = AllChem.RemoveHs(mol)
+    AllChem.Kekulize(mol)
+    mol = AllChem.AddHs(mol,addCoords=True)
+    check = []
+    bs = mol.GetBonds()
+    btype = [b.GetBondType() for b in bs]
+    for i, b in enumerate(bs):
+        btype = b.GetBondType()
+        batoms_sym = [b.GetBeginAtom().GetSymbol(),b.GetEndAtom().GetSymbol()]
+        batoms_val = [b.GetBeginAtom().GetTotalValence(),b.GetEndAtom().GetTotalValence()]
+        batomsH_idx = [sorted([n.GetIdx() for n in b.GetBeginAtom().GetNeighbors() if n.GetSymbol()=='H']),sorted([n.GetIdx() for n in b.GetEndAtom().GetNeighbors() if n.GetSymbol()=='H'])]
+        batoms_val_woH = [a-len(b) for a, b in zip(batoms_val, batomsH_idx)]
+        if (btype == BondType.SINGLE) \
+            and (batoms_val_woH[0] < 4) and (batoms_val_woH[1] < 4) \
+            and ((len(batomsH_idx[0]) in range(2,3)) and (len(batomsH_idx[1]) in range(2,3))) \
+            and (batoms_sym[0]!='H' and batoms_sym[1]!='H'):
+            check.append([b.GetIdx(), BondType.DOUBLE, batomsH_idx])
+    if len(check) > 0:
+        changed_mols = []
+        for i, c in enumerate(check):
+            mol_ = deepcopy(mol)
+            h_remove = sorted([c[-1][0][-1],c[-1][1][-1]],reverse=True)
+            
+            EAddFunc = AllChem.EditableMol(mol_)
+            for h_r in h_remove:
+                EAddFunc.RemoveAtom(h_r)
+            mol_ = EAddFunc.GetMol()
+            bonds = mol_.GetBonds()
+            bonds[c[0]].SetBondType(c[1])
+            Draw.MolToFile(mol_,'test.png',highlightBonds=[c[0]])
+            mol_ = AllChem.RemoveHs(mol_)
+            mol2 = deepcopy(mol_)
+            changed_mols.append(mol2)
+
+        if len(changed_mols) != 0:
+            return True, changed_mols
+    else:
+        return False, [mol]
+
+def Double2Single(mol):
+    mol = AllChem.RemoveHs(mol)
+    AllChem.Kekulize(mol)
+    check = []
+    bs = mol.GetBonds()
+    btype = [b.GetBondType() for b in bs]
+    for i, b in enumerate(bs):
+        btype = b.GetBondType()
+        batomsH = [b.GetBeginAtom().GetTotalNumHs(),b.GetEndAtom().GetTotalNumHs()]
+        if (btype == BondType.DOUBLE) and ((batomsH[0] > 0) and (batomsH[1] > 0)):
+            check.append([b.GetIdx(), BondType.SINGLE])
+    if len(check) == 0:
+        for i, b in enumerate(bs):
+            btype = b.GetBondType()
+            batomsH = [b.GetBeginAtom().GetTotalNumHs(),b.GetEndAtom().GetTotalNumHs()]
+            if (btype == BondType.DOUBLE):
+                check.append([b.GetIdx(), BondType.SINGLE])
+    changed_mols = []
+    for i, c in enumerate(check):
+        mol_ = deepcopy(mol)
+        AllChem.Kekulize(mol_)
+        bs = mol_.GetBonds()
+        bs[c[0]].SetBondType(c[1])
+        abi = bs[c[0]].GetBeginAtomIdx()
+        aei = bs[c[0]].GetEndAtomIdx()
+        atoms = mol_.GetAtoms()
+        atoms[abi].SetHybridization(HybridizationType.SP3)
+        atoms[abi].UpdatePropertyCache()
+        atoms[aei].SetHybridization(HybridizationType.SP3)
+        atoms[aei].UpdatePropertyCache()
+        mol_ = AllChem.RemoveHs(mol_)
+        mol2 = deepcopy(mol_)
+        changed_mols.append(mol2)
+    if len(changed_mols) != 0:
+        return changed_mols
+    else:
+        return [mol]
+
+
+
+def Heteroatom_Aromatic_Func_Add_list(mol,Func_smi,input_3d=True):
     mol = AllChem.RemoveHs(mol)
     mol_dup = deepcopy(mol)
-    convex_bond_idx, convex_atom_idx = convex_bond_atom(mol_dup)
     atoms = mol_dup.GetAtoms()
     aromatic_Hs = [atom.GetIdx() for atom in atoms \
-        if atom.GetTotalNumHs() == 1 and atom.IsInRing() \
+        if atom.GetTotalNumHs() == 1 and atom.IsInRing() and atom.GetIsAromatic() \
         and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
-    aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 3 and not atom.IsInRing()]
-    aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and atom.IsInRing()]
     Hs = aromatic_Hs #+ aliphatic_chain_Hs + aliphatic_ring_Hs
 
     mol_list = []
@@ -92,13 +201,367 @@ def Heteroatom_Func_Add_list(mol,Func_smi,input_3d=True):
                 smi_list.append(smi)
         if input_3d:
             mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
-        #else:
-        #    mol_list = [Embedfrom2Dto3D(AllChem.MolFromSmiles(smi)) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
         return True, mol_list
     else:
         mol_list = [AllChem.AddHs(mol,addCoords=True)]
         return False, mol_list
 
+def Heteroatom_Aliphatic_Func_Add_list(mol,Func_smi,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and (not atom.IsInRing())]
+    aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and atom.IsInRing() and (not atom.GetIsAromatic())]
+    Hs = aliphatic_chain_Hs + aliphatic_ring_Hs
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles(Func_smi)
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+    
+def Heteroatom_AliphaticChain_Func_Add_list(mol,Func_smi,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and (not atom.IsInRing())]
+    #aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and atom.IsInRing() and (not atom.GetIsAromatic())]
+    Hs = aliphatic_chain_Hs
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles(Func_smi)
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+
+def Heteroatom_AliphaticRing_Func_Add_list(mol,Func_smi,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    #aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and (not atom.IsInRing())]
+    aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and atom.IsInRing() and (not atom.GetIsAromatic())]
+    Hs = aliphatic_ring_Hs
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles(Func_smi)
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+
+def Heteroatom_Aromatic_Func_Add_withSym_list(mol,symbol,Func_smi,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    aromatic_Hs = [atom.GetIdx() for atom in atoms \
+        if atom.GetTotalNumHs() == 1 and atom.IsInRing() and atom.GetIsAromatic() \
+        and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
+    Hs = aromatic_Hs
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles(Func_smi)
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+
+def Heteroatom_Aliphatic_Func_Add_withSym_list(mol,symbol,Func_smi,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and (not atom.IsInRing()) and atom.GetSymbol() ==symbol]
+    aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() >= 1 and atom.IsInRing() and (not atom.GetIsAromatic()) and atom.GetSymbol() ==symbol]
+    Hs = aliphatic_chain_Hs + aliphatic_ring_Hs
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles(Func_smi)
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+
+def Heteroatom_Func_Add_DoubleO_list(mol,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    Hs_inRing = [atom.GetIdx() for atom in atoms \
+                   if atom.GetTotalNumHs() >= 2 and atom.IsInRing()]
+    Hs_inChain = [atom.GetIdx() for atom in atoms \
+                          if atom.GetTotalNumHs() == 3 and (not atom.IsInRing())]
+    Hs = Hs_inChain #+ Hs_inRing
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles('O')
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs1_sorted = sorted(hidxs1,reverse=True)[:2]
+            hidxs2_sorted = sorted(hidxs2,reverse=True)[:2]
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.DOUBLE)
+            h_remove = sorted(hidxs1_sorted+hidxs2_sorted,reverse=True)
+            for h_r in h_remove:
+                EAddFunc.RemoveAtom(h_r)
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+
+def Heteroatom_Aliphatic_Func_Add_withSym_list2(mol,symbol,Func_smi,numH=2,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    aliphatic_chain_Hs = [atom.GetIdx() for atom in atoms \
+                          if (atom.GetTotalNumHs() == numH) \
+                          and (not atom.IsInRing()) and atom.GetSymbol() == symbol]
+    aliphatic_ring_Hs = [atom.GetIdx() for atom in atoms \
+                         if (atom.GetTotalNumHs() == numH) \
+                         and atom.IsInRing() and (not atom.GetIsAromatic()) \
+                         and atom.GetSymbol() == symbol]
+    Hs = aliphatic_chain_Hs + aliphatic_ring_Hs
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            atoms = mol_dup.GetAtoms()            
+            Func = AllChem.MolFromSmiles(Func_smi)
+            Func_atoms = Func.GetAtoms()
+            Func_idx = np.arange(len(Func_atoms)) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            AddFuncH = AllChem.AddHs(AddFunc,addCoords=True)
+            atoms_comb = AddFuncH.GetAtoms()
+            hidxs1 = [n.GetIdx() for n in atoms_comb[idx_modify].GetNeighbors() if n.GetSymbol() == 'H']
+            hidxs2 = [n.GetIdx() for n in atoms_comb[int(Func_idx[0])].GetNeighbors() if n.GetSymbol() == 'H']
+            EAddFunc = AllChem.EditableMol(AddFuncH)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            h_remove = sorted([hidxs1[-1],hidxs2[-1]],reverse=True)
+            EAddFunc.RemoveAtom(h_remove[0])
+            EAddFunc.RemoveAtom(h_remove[1])
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.AddHs(AllChem.MolFromSmiles(smi),addCoords=True), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        return False, mol_list
+
+
+def Heteroatom_Func_Add_OH_list(mol,input_3d=True):
+    mol = AllChem.RemoveHs(mol)
+    mol_dup = deepcopy(mol)
+    atoms = mol_dup.GetAtoms()
+    aromatic_Hs = [atom.GetIdx() for atom in atoms \
+        if atom.GetTotalNumHs() == 1 and atom.IsInRing() \
+        and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
+    aliphatic_Hs = [atom.GetIdx() for atom in atoms if atom.GetTotalNumHs() == 3 and not atom.IsInRing()]
+    Hs = aromatic_Hs
+    if len(Hs) > 0:
+        Hs = aromatic_Hs
+    else:
+        Hs = aliphatic_Hs
+
+    mol_list = []
+    smi_list = []
+    if len(Hs) > 0:
+        for idx_modify in Hs:
+            #mol_dup = AllChem.RemoveHs(mol_dup)
+            atoms = mol_dup.GetAtoms()
+            atoms[idx_modify].SetNumExplicitHs(0)
+            Func = AllChem.MolFromSmiles('O')
+            Func_atoms = Func.GetAtoms()
+            Func_atoms[0].SetNoImplicit(True)
+            Func_atoms[0].SetNumExplicitHs(1)
+            Func_idx = np.array([0]) + len(atoms)
+            AddFunc = Chem.CombineMols(mol_dup,Func)
+            EAddFunc = AllChem.EditableMol(AddFunc)
+            EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+            mol_new = EAddFunc.GetMol()
+            smi = AllChem.MolToSmiles(mol_new)
+            if smi not in smi_list:
+                smi_list.append(smi)
+        if input_3d:
+            mol_list = [AllChem.ConstrainedEmbed(AllChem.MolFromSmiles(smi), mol_dup) for smi in smi_list]
+        else:
+            mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
+        return True, mol_list
+    else:
+        mol_list = [mol]
+        return False, mol_list
+
+#---------------------------------------------
+def Heteroatom_Sub_Quaternary_fromCtoN_testing(mol):
+    mol = deepcopy(mol)
+    mol = AllChem.RemoveHs(mol)
+    AllChem.Kekulize(mol)
+    atoms = mol.GetAtoms()
+    bonds = mol.GetBonds()
+    mol_list = []
+    sites_index = [atom.GetIdx() for atom in atoms if atom.IsInRingSize(6) \
+        and atom.GetTotalNumHs() == 0 and atom.GetSymbol() == 'C' \
+        and len([n for n in atom.GetNeighbors() if n.GetSymbol() == 'C']) == 3]
+    for i, idx in enumerate(sites_index):
+        mol2 = deepcopy(mol)
+        mol2 = AllChem.RemoveHs(mol2)
+        atoms2 = mol2.GetAtoms()
+        bonds2 = mol2.GetBonds()
+        nn_idx = [n.GetIdx() for n in atoms[idx].GetNeighbors()]
+        nn_bond_type = [mol.GetBondBetweenAtoms(idx,nidx).GetBondType() for nidx in nn_idx]
+        [mol2.GetBondBetweenAtoms(idx,nidx).SetBondType(BondType.SINGLE) for nidx in nn_idx]
+        atoms2[idx].SetAtomicNum(7)
+        try:
+            mol2 = AllChem.RemoveHs(mol2)
+            mol_list.append(mol2)
+        except:
+            continue
+    if len(mol_list) == 0:
+        return False, [mol]
+    else:
+        return True, mol_list
 
 #---------------------------------------------
 
@@ -209,36 +672,6 @@ def Convert_OH2CH3(mol):
     else:
         mol = AllChem.RemoveHs(mol)
         return mol, False
-
-
-def Convert_Aromatic2Aliphatic(mol):
-    mol = deepcopy(mol)
-    mol = AllChem.RemoveHs(mol)
-    AllChem.Kekulize(mol)
-    bonds = mol.GetBonds()
-    ar_bonds_idx = [bond.GetIdx() for bond in bonds \
-        if bond.GetIsAromatic() and bond.IsInRing() and not bond.IsInRingSize(5) and \
-            (bond.GetBeginAtom().GetTotalNumHs() == 1 and bond.GetEndAtom().GetTotalNumHs() == 1) and \
-            (bond.GetBeginAtom().GetSymbol() == 'C' and bond.GetEndAtom().GetSymbol() == 'C')    ]
-    #print(len(ar_bonds_idx), len(bonds))
-
-    if len(ar_bonds_idx) > 0:
-        abond = random.choice(ar_bonds_idx)
-
-        b = bonds[abond]
-        a1 = bonds[abond].GetBeginAtom()
-        a2 = bonds[abond].GetEndAtom()
-
-        b.SetBondType(Chem.rdchem.BondType.SINGLE)
-        a1.SetNumExplicitHs(1)
-        a2.SetNumExplicitHs(1)
-        a1.UpdatePropertyCache()
-        a2.UpdatePropertyCache()
-        mol = AllChem.RemoveHs(mol)
-        return True, mol
-    else:
-        mol = AllChem.RemoveHs(mol)
-        return False, mol
 
 #Add aliphatic 6ring
 def Heteroatom_Add_6Ring_Aliphatic(mol):
@@ -1324,6 +1757,7 @@ def Heteroatom_Sub_Quaternary_fromCtoN(mol):
         and atom.GetTotalNumHs() == 0 and atom.GetSymbol() == 'C' \
         and len([n for n in atom.GetNeighbors() if n.GetSymbol() == 'C']) == 3 \
         and atom.GetTotalValence() == 3]
+    print(sites_index)
     random.shuffle(sites_index)
     Chem.Kekulize(mol)
     if len(sites_index) > 0:
@@ -1916,6 +2350,37 @@ def Heteroatom_Func_Carbonyl_Aldehyde(mol):
         return False, mol
 
 def Heteroatom_Func_Carbonyl_Ketone(mol):
+    mol = deepcopy(mol)
+    mol = AllChem.RemoveHs(mol)
+    atoms = mol.GetAtoms()
+
+    aromatic_Hs = [atom.GetIdx() for atom in atoms \
+        if atom.GetTotalNumHs() <= 2 \
+        and (atom.IsInRingSize(6) or atom.IsInRingSize(5)) \
+        and atom.GetSymbol() == 'C' and len([n.GetSymbol() for n in atom.GetNeighbors()]) <= 2]
+    Chem.Kekulize(mol)
+    if len(aromatic_Hs) > 0:
+        random.shuffle(aromatic_Hs)
+        #choose one
+        idx_modify = aromatic_Hs[0]
+        atoms[idx_modify].SetNumExplicitHs(0)
+        Func = AllChem.MolFromSmiles('C(=O)C')
+        Func_atoms = Func.GetAtoms()
+        Func_atoms[0].SetNoImplicit(True)
+        Func_atoms[0].SetNumExplicitHs(0)
+        Func_idx = np.array([0,1,2]) + len(atoms)
+        AddFunc = Chem.CombineMols(mol,Func)
+        EAddFunc = AllChem.EditableMol(AddFunc)
+        EAddFunc.AddBond(idx_modify,int(Func_idx[0]),order=Chem.rdchem.BondType.SINGLE)
+        mol = EAddFunc.GetMol()
+        atoms_comb = mol.GetAtoms()
+        mol = AllChem.RemoveHs(mol)
+        return True, mol
+    else:
+        mol = AllChem.RemoveHs(mol)
+        return False, mol
+
+def Heteroatom_Func_Carbonyl_Ketone2(mol):
     mol = deepcopy(mol)
     mol = AllChem.RemoveHs(mol)
     atoms = mol.GetAtoms()

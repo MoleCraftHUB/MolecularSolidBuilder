@@ -12,7 +12,7 @@ from rdkit.Chem.rdchem import HybridizationType
 from rdkit.Geometry import Point3D
 from rdkit.Chem.rdMolTransforms import ComputeCentroid
 
-def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_size=[6]):
+def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_size=[6],nring_size=11):
 	new_mols = []
 	smis = []
 	unique = {}
@@ -21,42 +21,63 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 	frgs = [AllChem.MolFromSmiles(fs) for fs in frgs_smis]
 	mol_idx = [atom.GetIdx() for atom in AllChem.RemoveHs(mol).GetAtoms()]
 	mol_pos = [mol.GetConformer().GetAtomPosition(ai) for ai, aa in enumerate(mol.GetAtoms())]
+	ringinfo = mol.GetRingInfo()
+	atomring = ringinfo.AtomRings()
 	for i, edge in enumerate(edges):
+		edge_rinfo1 = []
+		for eg in edge:
+			check1 = min([len(ar) for ar in atomring if eg in ar])
+			#check2 = [True if c in nring_size else False for c in check1 ]			
+			edge_rinfo1.append(check1)
+		edge_smallest = min(edge_rinfo1)
+		
 		if len(edge) == 2:
-			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			frgs_screen = [frg for frg in frgs \
+				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 		if len(edge) == 3:
-			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			frgs_screen = [frg for frg in frgs \
+				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 		if len(edge) == 4:
-			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			frgs_screen = [frg for frg in frgs \
+				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 		if len(edge) == 5:
-			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			frgs_screen = [frg for frg in frgs \
+				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-			new_mol = single_bonds(mol,edge)
-			new_mols.append(new_mol)
+			if len(edge) + edge_smallest >= nring_size:
+				new_mol = single_bonds(mol,edge)
+				new_mols.append(new_mol)
 			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 		if len(edge) == 6:
-			frgs_screen = [frg for frg in frgs if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size))]
+			frgs_screen = [frg for frg in frgs \
+				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-			new_mol = single_bonds(mol,edge)
-			new_mols.append(new_mol)
+			if len(edge) + edge_smallest >= nring_size:
+				new_mol = single_bonds(mol,edge)
+				new_mols.append(new_mol)
 			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
 
 	for j, new_mol in enumerate(new_mols):
@@ -72,7 +93,6 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 	#new_mols = [AllChem.AddHs(new_mol,addCoords=True) for new_mol in new_mols]
 	new_mols = [AllChem.RemoveHs(new_mol) for new_mol in new_mols]
 	return new_mols
-
 
 def single_bonds(mol,edge):
 	#Able to deal with cove and fjord region
