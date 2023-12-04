@@ -1,5 +1,7 @@
 # Molecular Solid Builder
 
+![plot](./Construction_Stage0-4.png)
+
 ## Introduction
 
 Complex organic compounds such as Coal, Coal derived pitch, petroluem derived pitch are often not suitable to study with the single representative molecular models because the average effect of experimental characterizations can tarnish the details of compounds which are collection of various molecular types and properties. To build realistic atomistic and molecular models, we need to accept the fact that these compounds are composed of wide range of molecular types and molecular weights.
