@@ -11,7 +11,7 @@ The Molecular Solid Builder tool is an open source code utilizing python API of 
 ![plot](./Figures/Fig1_Molecular_Construction_Stages.png)
 Fig1. Molecular generations based on TEM, 13C NMR, elemental composition and mass weight distribution from individual molecules.
 
-![plot](./Figures/Fig2_Solidification_Coal)
+![plot](./Figures/Fig2_Solidification_Coal.png)
 Fig2. Solidication of multiple molecules for Coal model construction using molecular dynamics simulations.
 
 ## Usage of the Code
