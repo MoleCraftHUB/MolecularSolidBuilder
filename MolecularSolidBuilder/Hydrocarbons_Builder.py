@@ -21,6 +21,17 @@ def angle_between_plane(n1,n2):
     theta_deg = np.degrees(theta_rad)
     return theta_deg
 
+def best_plane(mol):
+	conf = mol.GetConformer()
+	c = AllChem.ComputeCentroid(conf)
+	centroid = np.array([c.x,c.y,c.z])
+	positions = conf.GetPositions()
+
+	_,_, V = np.linalg.svd(positions - centroid)
+	normal_vector = V[-1]
+	return normal_vector
+
+
 def mol_plane_and_normalv(mol):
     conf = mol.GetConformer()
     c = AllChem.ComputeCentroid(conf)
