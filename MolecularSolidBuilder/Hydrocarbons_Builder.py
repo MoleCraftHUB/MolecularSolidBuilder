@@ -27,7 +27,7 @@ def mol_plane_and_normalv(mol):
     centroid = np.array([c.x,c.y,c.z])
     positions = conf.GetPositions()
     atoms = mol.GetAtoms()
-    aromCH_idx = [atom.GetIdx() for atom in atoms if atom.GetIsAromatic() and atom.GetTotalNumHs()>0]
+    aromCH_idx = [atom.GetIdx() for atom in atoms if atom.GetIsAromatic() and atom.GetTotalNumHs()>=0]
     p1 = positions[aromCH_idx[0]]
     p2 = positions[aromCH_idx[-1]]
 
