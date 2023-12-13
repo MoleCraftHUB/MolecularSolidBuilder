@@ -109,7 +109,6 @@ def type_idx_sym(mol1):
 
 	return avail_atoms_dict_chain, avail_atoms_dict_ring
 
-
 def Combine_MMFF94s(ms):
 	#ms is the list of mol objects
 	#shuffle the molecules before combine
@@ -134,6 +133,75 @@ def Combine_MMFF94s(ms):
 		return new_mol
 
 def Crosslink_MMFF94s(mol1,mol2):
+	
+	combined_mol = []
+	mol1 = AllChem.RemoveHs(mol1)
+	atoms = mol1.GetAtoms()
+	a1c, a1r = type_idx_sym(mol1)
+
+	mol2 = AllChem.RemoveHs(mol2)
+	a2c, a2r = type_idx_sym(mol2)
+
+	pair_idx = []
+	pair_symbol = []
+	exclude = ['SS','SO','OS','NN','NO','ON','OO','SN','NS']
+
+	for a1_ in a1c.items():
+		for a2_ in a2c.items():
+			if a1_[1]+a2_[1] not in exclude:
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+	for a1_ in a1c.items():
+		for a2_ in a2r.items():
+			if a1_[1]+a2_[1] not in exclude:
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+	for a1_ in a1r.items():
+		for a2_ in a2c.items():
+			if a1_[1]+a2_[1] not in exclude:
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+	for a1_ in a1r.items():
+		for a2_ in a2r.items():
+			if a1_[1]+a2_[1] not in exclude:
+				pair_idx.append([a1_[0],a2_[0]])
+				pair_symbol.append(a1_[1]+a2_[1])
+
+	pair_new = []
+	for pi, ps in zip(pair_idx, pair_symbol):
+		pair_new.append(pi)
+
+	pair_update = [[p[0],p[1]+len(atoms)] for p in pair_new] # update index for combined mol
+	m_comb = Chem.CombineMols(mol1,mol2)
+	for i, link in enumerate(pair_update):
+		m_comb_dup = deepcopy(m_comb)
+		a1 = link[0]
+		a2 = link[1]
+		edcombo = Chem.EditableMol(m_comb_dup)
+		edcombo.AddBond(a1,a2,order=Chem.rdchem.BondType.SINGLE)
+		connected_m = edcombo.GetMol()
+		atoms_m = connected_m.GetAtoms()
+
+		connected_m = AllChem.AddHs(connected_m)
+		atoms_m = connected_m.GetAtoms()
+		hs_remove = []
+		hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+		hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+		hs_remove.append(hs_a1)
+		hs_remove.append(hs_a2)
+
+		hs_remove = list(sorted(set(hs_remove), reverse=True))
+		edcombo2 = Chem.EditableMol(connected_m)
+		[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+		connected_m = edcombo2.GetMol()
+		final = deepcopy(connected_m)
+		MW = Descriptors.ExactMolWt(final)
+		combined_mol.append(final)
+
+	mols = MMFF94s_energy(combined_mol)
+	return mols
+
+def Crosslink_MMFF94s_selective(mol1,mol2):
 	
 	combined_mol = []
 	mol1 = AllChem.RemoveHs(mol1)

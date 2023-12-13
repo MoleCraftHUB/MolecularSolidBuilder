@@ -12,6 +12,54 @@ from rdkit.Chem.rdchem import HybridizationType
 from rdkit.Geometry import Point3D
 from rdkit.Chem.rdMolTransforms import ComputeCentroid
 
+def angle_between_plane(n1,n2):
+    dot_product = np.dot(n1,n2)
+    magnitude_n1 =  np.linalg.norm(n1)
+    magnitude_n2 =  np.linalg.norm(n2)
+    cos_theta = dot_product / (magnitude_n1 * magnitude_n2)
+    theta_rad = np.arccos(np.clip(cos_theta, -1.0, 1.0))
+    theta_deg = np.degrees(theta_rad)
+    return theta_deg
+
+def mol_plane_and_normalv(mol):
+    conf = mol.GetConformer()
+    c = AllChem.ComputeCentroid(conf)
+    centroid = np.array([c.x,c.y,c.z])
+    positions = conf.GetPositions()
+    atoms = mol.GetAtoms()
+    aromCH_idx = [atom.GetIdx() for atom in atoms if atom.GetIsAromatic() and atom.GetTotalNumHs()>0]
+    p1 = positions[aromCH_idx[0]]
+    p2 = positions[aromCH_idx[-1]]
+
+    v1 = p1 - c
+    v2 = p2 - c
+    normal_vector = np.cross(v1, v2)
+    return normal_vector
+
+def break_crosslinking_bond(mol):
+	atoms = mol.GetAtoms()
+	idxs = [atom.GetIdx() for atom in atoms if atom.IsInRing()]
+	pairs = list(combinations(idxs,2))
+
+	frag_pairs = []
+	frag_bonds = []
+	for pair in pairs:
+		path_idx = AllChem.GetShortestPath(mol,pair[0],pair[1])
+		check1 = [atoms[pid].IsInRing() for pid in path_idx]
+		if (check1[0]==True) and (check1[-1]==True) and list(set(check1[1:-1]))==[False]:
+			frag_pairs.append(path_idx)
+			b1 = mol.GetBondBetweenAtoms(path_idx[0],path_idx[1])
+			b2 = mol.GetBondBetweenAtoms(path_idx[-2],path_idx[-1])
+			frag_bonds.append(b1.GetIdx())
+			frag_bonds.append(b2.GetIdx())
+
+	if len(frag_bonds)>0:
+		mol1_f = Chem.FragmentOnBonds(mol,frag_bonds,addDummies=False)
+		mols_f = Chem.GetMolFrags(mol1_f, asMols=True)
+		return mols_f
+	else:
+		return []
+
 def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_size=[6],nring_size=11):
 	new_mols = []
 	smis = []

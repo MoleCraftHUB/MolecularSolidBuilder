@@ -30,8 +30,6 @@ def SMItoPDBFile(smi,fname,mmb=False):
 	return fname
 
 
-
-
 def PAH_screen1(mol):
 
     mol = AllChem.RemoveHs(mol)
