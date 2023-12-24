@@ -96,7 +96,7 @@ def Minimum_Bounding_Box_3D(positions,center_at_origin=True):
     # rrc = rotated rectangle coordinates
     rrc = np.matmul(evec, rectCoords(xmin, ymin, zmin, xmax, ymax, zmax))
     rrc += means[:, np.newaxis] 
-    print(rrc)
+    #print(rrc)
     return new_positions, new_box_info_shift
 
 def ReadPositionInPDBfile(pdb_string):

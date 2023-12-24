@@ -31,7 +31,6 @@ def best_plane(mol):
 	normal_vector = V[-1]
 	return normal_vector
 
-
 def mol_plane_and_normalv(mol):
     conf = mol.GetConformer()
     c = AllChem.ComputeCentroid(conf)
@@ -82,6 +81,7 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 	mol_pos = [mol.GetConformer().GetAtomPosition(ai) for ai, aa in enumerate(mol.GetAtoms())]
 	ringinfo = mol.GetRingInfo()
 	atomring = ringinfo.AtomRings()
+	
 	for i, edge in enumerate(edges):
 		edge_rinfo1 = []
 		for eg in edge:
