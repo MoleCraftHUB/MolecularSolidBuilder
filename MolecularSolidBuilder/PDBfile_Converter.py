@@ -23,10 +23,11 @@ def PDBImageFileToMols(pdb_filename):
         pdb_block = lines[start:end]
         start = end
         pdb_block_str = "".join(pdb_block)
-        m = AllChem.MolFromPDBBlock(pdb_block_str,removeHs=False)
-        #print("test")
-        #m = AllChem.RemoveHs(m, updateExplicitCount=True)
-        ms.append(m)
+        try:
+            m = AllChem.MolFromPDBBlock(pdb_block_str,removeHs=False)
+            ms.append(m)
+        except:
+            continue
     return ms
 
 def MolsToPDBImageFile(mols,pdb_filename,embed=False):
