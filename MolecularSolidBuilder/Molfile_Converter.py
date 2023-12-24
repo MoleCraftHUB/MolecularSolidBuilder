@@ -29,11 +29,13 @@ def MOLImageFileToMols(mol_filename):
         ms.append(m)
     return ms
 
-def MolsToMOLImageFile(mols,mol_filename):
+def MolsToMOLImageFile(mols,mol_filename,embed=False):
     f = open(mol_filename,'w')
     for i, mol in enumerate(mols):
-        mol3D = Embedfrom2Dto3D(mol)
-        pdbblock = AllChem.MolToMolBlock(mol3D)
+        mol = Embedfrom2Dto3D(mol)
+        if embed:
+            mol = Embedfrom2Dto3D(mol)
+        pdbblock = AllChem.MolToMolBlock(mol)
         f.write(pdbblock)
         f.flush()
     f.close()
