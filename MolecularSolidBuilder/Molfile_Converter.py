@@ -32,7 +32,6 @@ def MOLImageFileToMols(mol_filename):
 def MolsToMOLImageFile(mols,mol_filename,embed=False):
     f = open(mol_filename,'w')
     for i, mol in enumerate(mols):
-        mol = Embedfrom2Dto3D(mol)
         if embed:
             mol = Embedfrom2Dto3D(mol)
         pdbblock = AllChem.MolToMolBlock(mol)
