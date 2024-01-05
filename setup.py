@@ -4,7 +4,7 @@ with open("README.md", "r", encoding = "utf-8") as fh:
 	long_description = fh.read()
 
 setuptools.setup(
-	name = "package-name",
+	name = "MolecularSolidBuilder",
 	version = "0.0.1",
 	author = "Pilsun Yoo",
 	author_email = "yoop@ornl.gov",
