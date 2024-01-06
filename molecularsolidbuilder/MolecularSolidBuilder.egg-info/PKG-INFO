@@ -1,0 +1,35 @@
+Metadata-Version: 2.1
+Name: MolecularSolidBuilder
+Version: 0.0.1
+Summary: short package description
+Home-page: package URL
+Author: Pilsun Yoo
+Author-email: yoop@ornl.gov
+Project-URL: Bug Tracker, package issues URL
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: rdkit
+Requires-Dist: numpy
+Requires-Dist: ase
+
+# Molecular Solid Builder
+
+
+## Introduction
+
+Complex organic compounds such as Coal, Coal derived pitch, petroluem derived pitch are often not suitable to study with the single representative molecular model because the average representation from experimental characterizations can tarnish the details of compounds which are collection of various molecular types and properties. To build realistic atomistic and molecular models, we need to accept the fact that these compounds are composed of wide range of molecular types and molecular weights.
+
+The Molecular Solid Builder tool is an open source code utilizing python API of RDKit for molecular construction, editing and visualization. This code is composed of functions allowing to conveniently construct stochastic molecular systems such as Coal and Pitch systems together with experimental charactierzations such as TEM lattice fringe analysis, carbon-13 NMR, elemental composition analysis, and mass weight distributions, etc.
+
+
+![plot](./Figures/Fig1_Molecular_Construction_Stages.png)
+Fig1. Molecular generations based on TEM, 13C NMR, elemental composition and mass weight distribution from individual molecules.
+
+![plot](./Figures/Fig2_Solidification_Coal.png)
+Fig2. Solidication of multiple molecules for Coal model construction using molecular dynamics simulations.
+
+## Usage of the Code

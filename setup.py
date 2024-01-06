@@ -12,6 +12,10 @@ setuptools.setup(
 	long_description = long_description,
 	long_description_content_type = "text/markdown",
 	url = "package URL",
+	install_requires=['rdkit',
+	                  'numpy',
+					  'ase',
+	                 ],
 	project_urls = {
 		"Bug Tracker": "package issues URL",
 	},
@@ -20,7 +24,7 @@ setuptools.setup(
 		"License :: OSI Approved :: MIT License",
 		"Operating System :: OS Independent",
 	],
-	package_dir = {"": "src"},
-	packages = setuptools.find_packages(where="src"),
+	package_dir = {"": "molecularsolidbuilder"},
+	packages = setuptools.find_packages(where="molecularsolidbuilder"),
 	python_requires = ">=3.6"
 )

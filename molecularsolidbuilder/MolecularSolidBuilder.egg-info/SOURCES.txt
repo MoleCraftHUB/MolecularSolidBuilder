@@ -1,0 +1,10 @@
+LICENSE.txt
+README.md
+pyproject.toml
+setup.cfg
+setup.py
+molecularsolidbuilder/MolecularSolidBuilder.egg-info/PKG-INFO
+molecularsolidbuilder/MolecularSolidBuilder.egg-info/SOURCES.txt
+molecularsolidbuilder/MolecularSolidBuilder.egg-info/dependency_links.txt
+molecularsolidbuilder/MolecularSolidBuilder.egg-info/requires.txt
+molecularsolidbuilder/MolecularSolidBuilder.egg-info/top_level.txt
