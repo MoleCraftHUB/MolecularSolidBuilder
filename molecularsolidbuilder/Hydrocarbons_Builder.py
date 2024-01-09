@@ -70,12 +70,14 @@ def break_crosslinking_bond(mol):
 	else:
 		return []
 
-def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_size=[6],nring_size=11):
+def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_size=[6],nring_size=[11,12]):
 	new_mols = []
 	smis = []
 	unique = {}
 	edges = Find_Vertex_v2(mol)
-	frgs_smis = ['C','C=C','C=CC','CC=C','C=CC=C','CC=CC=C','C=CC=CC','C=CC=CC=C']
+	frgs_smis = ['C','C=C','C=CC','CC=C','C=CC=C','CC=CC=C','C=CC=CC','C=CC=CC=C',
+			     'C=CC=CC=CC','CC=CC=CC=C','C=CC=CC=CC=C','C=CC=CC=CC=CC','CC=CC=CC=CC=C',
+			    ]
 	frgs = [AllChem.MolFromSmiles(fs) for fs in frgs_smis]
 	mol_idx = [atom.GetIdx() for atom in AllChem.RemoveHs(mol).GetAtoms()]
 	mol_pos = [mol.GetConformer().GetAtomPosition(ai) for ai, aa in enumerate(mol.GetAtoms())]
@@ -93,7 +95,8 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 		if len(edge) == 2:
 			frgs_screen = [frg for frg in frgs \
 				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
-					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size[0]) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest <= nring_size[1])	]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
@@ -101,7 +104,8 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 		if len(edge) == 3:
 			frgs_screen = [frg for frg in frgs \
 				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
-					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size[0]) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest <= nring_size[1])	]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
@@ -109,7 +113,8 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 		if len(edge) == 4:
 			frgs_screen = [frg for frg in frgs \
 				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
-					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size[0]) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest <= nring_size[1])	]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
@@ -117,7 +122,8 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 		if len(edge) == 5:
 			frgs_screen = [frg for frg in frgs \
 				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
-					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size[0]) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest <= nring_size[1])	]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
@@ -129,7 +135,8 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 		if len(edge) == 6:
 			frgs_screen = [frg for frg in frgs \
 				  if (len(frg.GetAtoms())+len(edge) >= min(ring_size)) and (len(frg.GetAtoms())+len(edge) <= max(ring_size)) \
-					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size)]
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest >= nring_size[0]) \
+					and (len(frg.GetAtoms())+len(edge)+edge_smallest <= nring_size[1])	]
 			for frg in frgs_screen:
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
