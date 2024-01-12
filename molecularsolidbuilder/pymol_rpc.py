@@ -99,7 +99,7 @@ class pymol_jupyter_builder:
         self.server.do('color white, elem h')
         self.server.do('color blue,  elem n')
         self.server.do('color pink,  elem si')
-        self.server.do('color green,  elem s')
+        self.server.do('color yellow,  elem s')
         self.server.do('show sticks')
         self.server.do('show spheres')
         #self.server.do('set antialias,2')

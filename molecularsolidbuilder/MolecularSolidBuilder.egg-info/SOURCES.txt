@@ -1,6 +1,5 @@
 LICENSE.txt
 README.md
-pyproject.toml
 setup.cfg
 setup.py
 molecularsolidbuilder/MolecularSolidBuilder.egg-info/PKG-INFO
@@ -8,3 +7,8 @@ molecularsolidbuilder/MolecularSolidBuilder.egg-info/SOURCES.txt
 molecularsolidbuilder/MolecularSolidBuilder.egg-info/dependency_links.txt
 molecularsolidbuilder/MolecularSolidBuilder.egg-info/requires.txt
 molecularsolidbuilder/MolecularSolidBuilder.egg-info/top_level.txt
+molecularsolidbuilder/molecularsolidbuilder.egg-info/PKG-INFO
+molecularsolidbuilder/molecularsolidbuilder.egg-info/SOURCES.txt
+molecularsolidbuilder/molecularsolidbuilder.egg-info/dependency_links.txt
+molecularsolidbuilder/molecularsolidbuilder.egg-info/requires.txt
+molecularsolidbuilder/molecularsolidbuilder.egg-info/top_level.txt

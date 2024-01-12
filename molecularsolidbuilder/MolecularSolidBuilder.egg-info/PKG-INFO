@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
-Name: MolecularSolidBuilder
+Name: molecularsolidbuilder
 Version: 0.0.1
-Summary: short package description
-Home-page: package URL
+Summary: MolecularSolidBuilder
+Home-page: https://github.com/MoleCraftHUB/MolecularSolidBuilder/
 Author: Pilsun Yoo
 Author-email: yoop@ornl.gov
 Project-URL: Bug Tracker, package issues URL
