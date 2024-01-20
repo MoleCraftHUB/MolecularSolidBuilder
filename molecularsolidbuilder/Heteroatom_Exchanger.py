@@ -84,7 +84,8 @@ def Add_OH_tofaC(mol,input_3d=False):
             mol_list = [AllChem.MolFromSmiles(smi) for smi in smi_list]
         return True, mol_list
     else:
-        mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        #mol_list = [AllChem.AddHs(mol,addCoords=True)]
+        mol_list = [mol]
         return False, mol_list
 
 
@@ -173,7 +174,7 @@ def Heteroatom_Aromatic_Func_Add_list(mol,Func_smi,input_3d=True):
     mol_dup = deepcopy(mol)
     atoms = mol_dup.GetAtoms()
     aromatic_Hs = [atom.GetIdx() for atom in atoms \
-        if atom.GetTotalNumHs() == 1 and atom.IsInRing() and atom.GetIsAromatic() \
+        if atom.GetTotalNumHs() >= 1 and atom.IsInRing() and atom.GetIsAromatic() \
         and ('N' not in [n.GetSymbol() for n in atom.GetNeighbors()]) ]
     Hs = aromatic_Hs #+ aliphatic_chain_Hs + aliphatic_ring_Hs
 

@@ -111,10 +111,7 @@ def Plot_2Dmol(mol, ha=None, pngfilename='2d.png',size=(1000,1000)):
     return pngfilename
 
 def Embedfrom2Dto3D(mol):
-    #params = AllChem.ETKDGv3()
-    #params.useSmallRingTorsions = True
     mol = AllChem.AddHs(mol)
-    #AllChem.AssignAtomChiralTagsFromStructure(mol,confId=-1,replaceExistingTags=True)
     AllChem.RemoveStereochemistry(mol)
     AllChem.EmbedMolecule(mol, useRandomCoords=True, useBasicKnowledge=False)
     AllChem.MMFFOptimizeMolecule(mol, mmffVariant='MMFF94s',nonBondedThresh=5000)

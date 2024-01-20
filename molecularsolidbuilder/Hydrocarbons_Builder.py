@@ -128,7 +128,7 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-			if len(edge) + edge_smallest >= nring_size:
+			if len(edge) + edge_smallest >= nring_size[0]:
 				new_mol = single_bonds(mol,edge)
 				new_mols.append(new_mol)
 			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
@@ -141,7 +141,7 @@ def propagate_new(mol,reduce=True,constrained_opt=True,close_ring=[5,6],ring_siz
 				new_mol = two_bonds_with_fragment(mol,frg,edge)
 				new_mols.append(new_mol)
 				smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
-			if len(edge) + edge_smallest >= nring_size:
+			if len(edge) + edge_smallest >= nring_size[0]:
 				new_mol = single_bonds(mol,edge)
 				new_mols.append(new_mol)
 			smis.append(AllChem.MolToSmiles(AllChem.RemoveHs(new_mol)))
