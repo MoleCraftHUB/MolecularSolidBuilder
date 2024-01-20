@@ -9,7 +9,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, Draw, rdCoordGen, Descriptors, rdMolHash
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem.rdchem import HybridizationType
-from .MinimumBoundingBox3D import Get3DMinimumBoundingBox
+from ..MinimumBoundingBox3D import Get3DMinimumBoundingBox
 
 
 def lmpdumpfile_cell_info(lmpdumpfile):
