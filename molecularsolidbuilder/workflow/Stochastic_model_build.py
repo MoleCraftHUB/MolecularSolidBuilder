@@ -848,51 +848,92 @@ def Add_Heteratom_N(target_cnmr,target_elements,load_pdb_file=None,load_dir=None
         pdbfile_loaded = sorted(glob.glob(load_dir+'/*.pdb'),key=lambda x:Descriptors.MolWt(AllChem.MolFromPDBFile(x)),reverse=True)
         mols_loaded = [AllChem.MolFromPDBFile(pdbfile) for pdbfile in pdbfile_loaded]
 
-    mols_modify = deepcopy(mols_loaded)
+    mols_modify = deepcopy([AllChem.RemoveHs(mt) for mt in mols_loaded])
     current_cnmr = carbon_nmr(mols_modify)
     current_elements = current_element(mols_modify)
 
     total_num_atoms = sum([len(AllChem.AddHs(m).GetAtoms()) for m in mols_modify])
     target_N = target_elements["N"]
     print(f"Total n of atoms:{total_num_atoms}, Target N atoms:{int(total_num_atoms*target_N/100)}")
-
-
-    sys.exit()
-    projected_target_falO = (t_falO+addtotarget) / (t_fa+t_fal)
-    projected_current_falO = c_falO / (c_fa+c_fal)
-    print(f"target falO {projected_target_falO:.3%} and current falO {projected_current_falO:.3%}")
-    print(f"Add falO carbons to {load_pdb_file}")
+    
+    target_pyrrolic_n = int(total_num_atoms*target_N*types['pyrrolic_n']/100)
+    target_pyridine_n = int(total_num_atoms*target_N*types['pyridine_n']/100)
+    target_quaternary_n = int(total_num_atoms*target_N*types['quaternary_n']/100)
+    furan_site_count = sum([len(num_5ringO(m)) for m in mols_modify])
+    print(f"Target Pyrrolic N atoms:{target_pyrrolic_n}, Target Pyridine N atoms:{target_pyridine_n}, Target Quaternary N atoms:{target_quaternary_n}")
+    print(f"Available furan sites:{furan_site_count}")
+    print(f"Add N atoms to {load_pdb_file}")
+    ######################################################################
+    current_pyrrolic_n = target_pyrrolic_n
     a = 0
     while True:
         a += 1
+        print(f"iteration {a}:Target Pyrrolic N atoms:{target_pyrrolic_n},Current Pyrrolic N atoms:{current_pyrrolic_n}")
         for i, mol in enumerate(mols_modify):
             mw = Descriptors.MolWt(mol)
             ringinfo = mol.GetRingInfo()
             aring = ringinfo.AtomRings()
+            n_number_inmol = len([atom for atom in mol.GetAtoms() if atom.GetSymbol()=='N'])
             flag = False
-            prob = int(50/(100*abs(projected_target_falO - projected_current_falO)+1))
-            if projected_target_falO > projected_current_falO and mw >= 0:
-                if random.choice([True]+[False]*int(prob)):
-                    flag, mol_list = Heteroatom_Aliphatic_Func_Add_withSym_list2(mol,'C','O',2,False)
-                    random.shuffle(mol_list)
-                    mol = mol_list[0]
-                    mols_modify[i] = mol_list[0]
-                else:
+            prob = int(50/(100*abs(target_pyrrolic_n - current_pyrrolic_n)+1))
+            if (n_number_inmol == 0) and (current_pyrrolic_n > 0) and (random.choice([True] + [False]*prob)):    
+                flag, mol = Heteroatom_Sub_5Ring_fromOtoN(mol)
+                if flag:
+                    current_pyrrolic_n = current_pyrrolic_n - 1
                     mols_modify[i] = mol
-            
-            if projected_target_falO <= projected_current_falO:
-                break
-
-        current_nmr = carbon_nmr(mols_modify)
-        projected_current_falO = current_nmr['falO'] / (current_nmr['fa'] + current_nmr['fal'])
-        #print(f"probability to modify: {prob}")
-        print(f"iteration {a}: target falO {projected_target_falO:.3%} and current falO {projected_current_falO:.3%}")
-        if projected_target_falO <= projected_current_falO:
+        if current_pyrrolic_n == 0:
             break
+    current_elements = current_element(mols_modify)
+    print(current_elements)
+    ######################################################################
+    current_pyridine_n = target_pyridine_n
+    a = 0
+    while True:
+        a += 1
+        print(f"iteration {a}:Target Pyridine N atoms:{target_pyridine_n},Current Pyridine N atoms:{current_pyridine_n}")
+        for i, mol in enumerate(mols_modify):
+            mw = Descriptors.MolWt(mol)
+            ringinfo = mol.GetRingInfo()
+            aring = ringinfo.AtomRings()
+            n_number_inmol = len([atom for atom in mol.GetAtoms() if atom.GetSymbol()=='N'])
+            flag = False
+            prob = int(50/(100*abs(target_pyridine_n - current_pyridine_n)+1))
+            if (n_number_inmol == 0) and (current_pyridine_n > 0) and (random.choice([True] + [False]*prob)):    
+                flag, mol = Heteroatom_Sub_6Ring_fromCtoN(mol)
+                if flag:
+                    current_pyridine_n = current_pyridine_n - 1
+                    mols_modify[i] = mol
+        if current_pyridine_n == 0:
+            break
+    current_elements = current_element(mols_modify)
+    print(current_elements)
+    ######################################################################
+    current_quaternary_n = target_quaternary_n
+    a = 0
+    while True:
+        a += 1
+        print(f"iteration {a}:Target Quaternary N atoms:{target_quaternary_n},Current Quaternary N atoms:{current_quaternary_n}")
+        for i, mol in enumerate(mols_modify):
+            mw = Descriptors.MolWt(mol)
+            ringinfo = mol.GetRingInfo()
+            aring = ringinfo.AtomRings()
+            n_number_inmol = len([atom for atom in mol.GetAtoms() if atom.GetSymbol()=='N'])
+            flag = False
+            prob = int(50/(100*abs(target_quaternary_n - current_quaternary_n)+1))
+            if (n_number_inmol == 0) and (current_quaternary_n > 0) and (random.choice([True] + [False]*prob)):    
+                flag, mol_list = Heteroatom_Sub_Quaternary_fromCtoN_revise(mol)
+                random.shuffle(mol_list)
+                if flag:
+                    current_quaternary_n = current_quaternary_n - 1
+                    mols_modify[i] = mol_list[0]
+        if current_quaternary_n == 0:
+            break
+    current_elements = current_element(mols_modify)
+    ######################################################################
 
     elements_acc = current_element(mols_modify)
     nmr_acc = carbon_nmr(mols_modify, False)
-    print(f"Completed Adding faS carbons with {projected_target_falO:.3%}/{projected_current_falO:.3%}")
+    #print(f"Completed Adding faS carbons with {projected_target_falO:.3%}/{projected_current_falO:.3%}")
     print(f"Elemental composition (atomic%):{elements_acc}")
     print(f"13C-NMR data (ratio):{nmr_acc}")
     print("="*50)

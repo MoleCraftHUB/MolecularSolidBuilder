@@ -167,8 +167,6 @@ def Double2Single(mol):
     else:
         return [mol]
 
-
-
 def Heteroatom_Aromatic_Func_Add_list(mol,Func_smi,input_3d=True):
     mol = AllChem.RemoveHs(mol)
     mol_dup = deepcopy(mol)
@@ -535,30 +533,30 @@ def Heteroatom_Func_Add_OH_list(mol,input_3d=True):
         return False, mol_list
 
 #---------------------------------------------
-def Heteroatom_Sub_Quaternary_fromCtoN_testing(mol):
-    mol = deepcopy(mol)
+def Heteroatom_Sub_Quaternary_fromCtoN_revise(mol):
     mol = AllChem.RemoveHs(mol)
-    AllChem.Kekulize(mol)
-    atoms = mol.GetAtoms()
-    bonds = mol.GetBonds()
+    mols_d2s = Double2Single(mol)
     mol_list = []
-    sites_index = [atom.GetIdx() for atom in atoms if atom.IsInRingSize(6) \
-        and atom.GetTotalNumHs() == 0 and atom.GetSymbol() == 'C' \
-        and len([n for n in atom.GetNeighbors() if n.GetSymbol() == 'C']) == 3]
-    for i, idx in enumerate(sites_index):
-        mol2 = deepcopy(mol)
-        mol2 = AllChem.RemoveHs(mol2)
-        atoms2 = mol2.GetAtoms()
-        bonds2 = mol2.GetBonds()
-        nn_idx = [n.GetIdx() for n in atoms[idx].GetNeighbors()]
-        nn_bond_type = [mol.GetBondBetweenAtoms(idx,nidx).GetBondType() for nidx in nn_idx]
-        [mol2.GetBondBetweenAtoms(idx,nidx).SetBondType(BondType.SINGLE) for nidx in nn_idx]
-        atoms2[idx].SetAtomicNum(7)
-        try:
-            mol2 = AllChem.RemoveHs(mol2)
-            mol_list.append(mol2)
-        except:
-            continue
+    for i, m in enumerate(mols_d2s):
+        atoms = m.GetAtoms()
+        bonds = m.GetBonds()
+        sites_index = [atom.GetIdx() for atom in atoms if atom.IsInRingSize(6) \
+                       and atom.GetSymbol() == 'C' \
+                       and len([n for n in atom.GetNeighbors() if n.GetSymbol() == 'C']) == 3 \
+                       and len([1 for n in atom.GetNeighbors() if m.GetBondBetweenAtoms(atom.GetIdx(),n.GetIdx()).GetBondType()==BondType.SINGLE])==3
+                    ]
+        for j, s in enumerate(sites_index):
+            mc = deepcopy(m)
+            mch = AllChem.AddHs(mc,addCoords=True)
+            atoms2 = mch.GetAtoms()
+            h_idxs= [n.GetIdx() for n in atoms2[s].GetNeighbors() if n.GetSymbol()=='H']
+            edmh = AllChem.EditableMol(mch)
+            edmh.RemoveAtom(h_idxs[0])
+            mch_a = edmh.GetMol()
+            atoms3 = mch_a.GetAtoms()
+            atoms3[s].SetAtomicNum(7)
+            mc2 = AllChem.RemoveHs(mch_a)
+            mol_list.append(mc2)
     if len(mol_list) == 0:
         return False, [mol]
     else:
