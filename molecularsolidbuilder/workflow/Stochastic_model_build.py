@@ -949,3 +949,116 @@ def Add_Heteratom_N(target_cnmr,target_elements,load_pdb_file=None,load_dir=None
             os.mkdir(save_dir)
         for j, m in enumerate(mols_modify):
             AllChem.MolToPDBFile(Embedfrom2Dto3D(m),save_dir+"/mol_%d.pdb" % (j+1))
+
+
+def Add_Heteratom_S(target_cnmr,target_elements,load_pdb_file=None,load_dir=None,save_pdb_file=None,save_dir=None,addtotarget=0,
+                    types={'thiophene_s':0.41,'aromatic_s':0.26,'aliphatic_s':0.33}):
+
+    if load_pdb_file != None:
+        mols_loaded = PDBImageFileToMols(load_pdb_file)
+    if load_dir != None:
+        pdbfile_loaded = sorted(glob.glob(load_dir+'/*.pdb'),key=lambda x:Descriptors.MolWt(AllChem.MolFromPDBFile(x)),reverse=True)
+        mols_loaded = [AllChem.MolFromPDBFile(pdbfile) for pdbfile in pdbfile_loaded]
+
+    mols_modify = deepcopy([AllChem.RemoveHs(mt) for mt in mols_loaded])
+    current_cnmr = carbon_nmr(mols_modify)
+    current_elements = current_element(mols_modify)
+
+    total_num_atoms = sum([len(AllChem.AddHs(m).GetAtoms()) for m in mols_modify])
+    target_S = target_elements["S"]
+    print(f"Total n of atoms:{total_num_atoms}, Target S atoms:{int(total_num_atoms*target_S/100)}")
+    
+    target_thiophene_s = int(total_num_atoms*target_S*types['thiophene_s']/100)
+    target_aromatic_s = int(total_num_atoms*target_S*types['aromatic_s']/100)
+    target_aliphatic_s = int(total_num_atoms*target_S*types['aliphatic_s']/100)
+    furan_site_count = sum([len(num_5ringO(m)) for m in mols_modify])
+    print(f"Target Thiophene S atoms:{target_thiophene_s}, Target Aromatic S atoms:{target_aromatic_s}, Target Aliphatic S atoms:{target_aliphatic_s}")
+    print(f"Available furan sites:{furan_site_count}")
+    print(f"Add S atoms to {load_pdb_file}")
+    ######################################################################
+    current_thiophene_s = target_thiophene_s
+    a = 0
+    while True:
+        a += 1
+        print(f"iteration {a}:Target Thiophene S atoms:{target_thiophene_s},Current Thiophene S atoms:{current_thiophene_s}")
+        for i, mol in enumerate(mols_modify):
+            mw = Descriptors.MolWt(mol)
+            ringinfo = mol.GetRingInfo()
+            aring = ringinfo.AtomRings()
+            s_number_inmol = len([atom for atom in mol.GetAtoms() if atom.GetSymbol()=='S'])
+            flag = False
+            prob = int(50/(100*abs(target_thiophene_s - current_thiophene_s)+1))
+            if (s_number_inmol == 0) and (current_thiophene_s > 0) and (random.choice([True] + [False]*prob)):    
+                flag, mol = Heteroatom_Sub_5Ring_fromOtoS(mol)
+                if flag:
+                    current_thiophene_s = current_thiophene_s - 1
+                    mols_modify[i] = mol
+        if current_thiophene_s == 0:
+            break
+    current_elements = current_element(mols_modify)
+    print(current_elements)
+    ######################################################################
+
+    current_aromatic_s = target_aromatic_s
+    a = 0
+    while True:
+        a += 1
+        print(f"iteration {a}:Target Aromatic S atoms:{target_aromatic_s},Current Aromatic S atoms:{current_aromatic_s}")
+        for i, mol in enumerate(mols_modify):
+            mw = Descriptors.MolWt(mol)
+            ringinfo = mol.GetRingInfo()
+            aring = ringinfo.AtomRings()
+            s_number_inmol = len([atom for atom in mol.GetAtoms() if atom.GetSymbol()=='S'])
+            flag = False
+            prob = int(50/(100*abs(target_aromatic_s - current_aromatic_s)+1))
+            if (s_number_inmol == 0) and (current_aromatic_s > 0) and (random.choice([True] + [False]*prob)):    
+                flag, mol = Heteroatom_Func_SubOHtoSH(mol)
+                if flag:
+                    current_aromatic_s = current_aromatic_s - 1
+                    mols_modify[i] = mol
+        if current_aromatic_s == 0:
+            break
+    current_elements = current_element(mols_modify)
+    print(current_elements)
+    ######################################################################
+    current_aliphatic_s = target_aliphatic_s
+    a = 0
+    while True:
+        a += 1
+        print(f"iteration {a}:Target Aliphatic S atoms:{target_aliphatic_s},Current Aliphatic S atoms:{current_aliphatic_s}")
+        for i, mol in enumerate(mols_modify):
+            mw = Descriptors.MolWt(mol)
+            ringinfo = mol.GetRingInfo()
+            aring = ringinfo.AtomRings()
+            s_number_inmol = len([atom for atom in mol.GetAtoms() if atom.GetSymbol()=='S'])
+            flag = False
+            prob = int(50/(100*abs(target_aliphatic_s - current_aliphatic_s)+1))
+            if (s_number_inmol == 0) and (current_aliphatic_s > 0) and (random.choice([True] + [False]*prob)):    
+                flag, mol_list = Heteroatom_Sub_Quaternary_fromCtoN_revise(mol)
+                random.shuffle(mol_list)
+                if flag:
+                    current_aliphatic_s = current_aliphatic_s - 1
+                    mols_modify[i] = mol_list[0]
+        if current_aliphatic_s == 0:
+            break
+    current_elements = current_element(mols_modify)
+    ######################################################################
+
+    elements_acc = current_element(mols_modify)
+    nmr_acc = carbon_nmr(mols_modify, False)
+    #print(f"Completed Adding faS carbons with {projected_target_falO:.3%}/{projected_current_falO:.3%}")
+    print(f"Elemental composition (atomic%):{elements_acc}")
+    print(f"13C-NMR data (ratio):{nmr_acc}")
+    print("="*50)
+
+    if save_pdb_file != None:
+        print(f"Write as a single PDB file to {save_pdb_file}")
+        mols_modify = [Embedfrom2Dto3D(m) for m in mols_modify]
+        MolsToPDBImageFile(mols_modify,save_pdb_file)
+
+    if save_dir != None:
+        print(f"Write as individual PDB files to {save_dir}")
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+        for j, m in enumerate(mols_modify):
+            AllChem.MolToPDBFile(Embedfrom2Dto3D(m),save_dir+"/mol_%d.pdb" % (j+1))

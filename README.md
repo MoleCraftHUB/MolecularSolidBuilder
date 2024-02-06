@@ -1,5 +1,6 @@
 # Molecular Solid Builder
 
+This package offers functions and workflows for constructing molecules of varying sizes, predominantly composed of hydrocarbons. It leverages the functionality of RDKit and PyMOL to efficiently construct possible molecules.
 
 ## Introduction
 
@@ -14,4 +15,12 @@ Fig1. Molecular generations based on TEM, 13C NMR, elemental composition and mas
 ![plot](./Figures/Fig2_Solidification_Coal.png)
 Fig2. Solidication of multiple molecules for Coal model construction using molecular dynamics simulations.
 
-## Usage of the Code
+## Installation
+** Please note that the package currently can be installed from the source
+
+```bash
+git clone --depth 1 https://github.com/MoleCraftHUB/MolecularSolidBuilder.git 
+cd MolecularSolidBuilder
+pip install .
+```
+
