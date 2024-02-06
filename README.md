@@ -16,7 +16,7 @@ Fig1. Molecular generations based on TEM, 13C NMR, elemental composition and mas
 Fig2. Solidication of multiple molecules for Coal model construction using molecular dynamics simulations.
 
 ## Installation
-** Please note that the package currently can be installed from the source  
+**Please note that the package currently can be installed from the source.**
 
 ```bash
 git clone --depth 1 https://github.com/MoleCraftHUB/MolecularSolidBuilder.git 
