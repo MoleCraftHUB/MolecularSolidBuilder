@@ -3,9 +3,9 @@ from tkinter import simpledialog
 import numpy as np
 from itertools import combinations
 from copy import deepcopy
-from ase.io import read, write
-from ase import Atoms, Atom
-from ase.visualize import view
+#from ase.io import read, write
+#from ase import Atoms, Atom
+#from ase.visualize import view
 from rdkit import Chem
 from rdkit.Chem import AllChem, Draw, Descriptors
 

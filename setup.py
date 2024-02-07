@@ -14,6 +14,7 @@ setuptools.setup(
     url='https://github.com/MoleCraftHUB/MolecularSolidBuilder/',
 	install_requires=['rdkit',
 	                  'numpy',
+					  'pandas',
 					  'ase',
 	                 ],
 	project_urls = {
