@@ -1203,7 +1203,7 @@ def Mass_weight_Distribute(target_mass_range, target_mass_dist,load_pdb_file=Non
 
         flag = [True if tc-cc <= 0 else False for tc, cc in zip(target_count, current_count)]
 
-def Combine_Mols(load_dir='mass_distribute',save_dir='mass_distribute_combine'):
+def Combine_Mols(load_dir='mass_distribute',save_dir='mass_distribute_combine',method='smi'):
        
     seperated_mols = sorted(glob.glob(load_dir+'/*-*/*.pdb'),key=lambda x:int(x.split('/')[-2].split('-')[0]))
     for seperate_mol in seperated_mols:
@@ -1211,5 +1211,7 @@ def Combine_Mols(load_dir='mass_distribute',save_dir='mass_distribute_combine'):
         if not os.path.exists(combined_mol_path):
             os.makedirs(combined_mol_path)
         k = int(seperate_mol[:-4].split('_')[-1])
-        result = Get_combine(pdb_file=seperate_mol,path=combined_mol_path,link_sms=[''], base_num=k, estimate='smi')
+        #print(combined_mol_path,k)
+        result = Get_combine(pdb_file=seperate_mol,path=combined_mol_path,link_sms=[''], base_num=k, estimate=method)
+        print(result)
 

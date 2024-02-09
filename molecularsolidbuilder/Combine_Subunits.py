@@ -30,22 +30,9 @@ def MMFFs_3Dconstruct(mol):
     test = AllChem.MMFFOptimizeMoleculeConfs(mol2,numThreads=0)
     return mol2
 
-def Get_combine(pdb_file, path, link_sms, base_num=0, estimate='energy'):
+def Get_combine(pdb_file, path, link_sms, base_num=0, estimate='smi'):
 
-	f = open(pdb_file,'r')
-	lines = f.readlines()
-	end_index = [l for l in range(len(lines)) if 'END' in lines[l]]
-	start = 0
-
-	ms = []
-	for i in range(len(end_index)):
-		end = end_index[i] + 1
-		pdb_block = lines[start:end]
-		start = end
-		pdb_block_str = "".join(pdb_block)
-		m = AllChem.MolFromPDBBlock(pdb_block_str)
-		m = AllChem.AddHs(m)
-		ms.append(m)
+	ms = PDBImageFileToMols(pdb_file)
 
 	for i in range(1):
 		if estimate =='energy':
@@ -57,7 +44,9 @@ def Get_combine(pdb_file, path, link_sms, base_num=0, estimate='energy'):
 			mols = Embedfrom2Dto3D_conformers(mol)
 			pdb_block = "".join([AllChem.MolToPDBBlock(mol) for mol in mols])
 
-		mol = Embedfrom2Dto3D(mol)
+		Chem.SanitizeMol(mol)
+		AllChem.EmbedMolecule(mol, useRandomCoords=True, useBasicKnowledge=False)
+		AllChem.MMFFOptimizeMolecule(mol, mmffVariant='MMFF94s',nonBondedThresh=5000)
 		pdb_block = AllChem.MolToPDBBlock(mol)
 		pdb_file = open(path+'/molecule_%d.pdb' % base_num,'w')
 		pdb_file.write(pdb_block)

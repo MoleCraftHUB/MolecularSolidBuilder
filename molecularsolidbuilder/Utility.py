@@ -112,7 +112,7 @@ def Plot_2Dmol(mol, ha=None, pngfilename='2d.png',size=(1000,1000)):
 
 def Embedfrom2Dto3D(mol):
     mol = AllChem.AddHs(mol)
-    AllChem.RemoveStereochemistry(mol)
+    #AllChem.RemoveStereochemistry(mol)
     AllChem.EmbedMolecule(mol, useRandomCoords=True, useBasicKnowledge=False)
     AllChem.MMFFOptimizeMolecule(mol, mmffVariant='MMFF94s',nonBondedThresh=5000)
     
