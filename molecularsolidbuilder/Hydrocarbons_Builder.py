@@ -12,6 +12,143 @@ from rdkit.Chem.rdchem import HybridizationType
 from rdkit.Geometry import Point3D
 from rdkit.Chem.rdMolTransforms import ComputeCentroid
 
+def Find_Vertex_v2(m):
+
+	#m should have explicit hydrogens
+	m = AllChem.AddHs(m)
+	m = AllChem.RemoveHs(m)
+
+	convex_bond, convex_atom = convex_bond_atom(m)
+	
+	grow_index = []
+	atoms = m.GetAtoms()
+	bonds = m.GetBonds()
+
+	for bond_idx in convex_bond:
+		bond = bonds[bond_idx]
+		t1 = bond.GetBeginAtomIdx()
+		t2 = bond.GetEndAtomIdx()
+		t1_atom = bond.GetBeginAtom()
+		t2_atom = bond.GetEndAtom()
+		#Directly bonded
+		if t1 in convex_atom and t2 in convex_atom:
+			idxs = [t1,t2]
+			grow_index.append(idxs)
+		#One atom in the middle
+		if t1 in convex_atom and t2 not in convex_atom:
+			bond2 = t2_atom.GetBonds()
+			bb = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
+			if len(bb) > 0:
+				tt1 = bb[0].GetBeginAtomIdx()
+				tt2 = bb[0].GetEndAtomIdx()
+				if tt1 != t1 and tt1 != t2 and tt1 in convex_atom:
+					idxs = [t1,t2,tt1]
+					if [tt1,t2,t1] not in grow_index:
+						grow_index.append(idxs)
+				if tt2 != t1 and tt2 != t2 and tt2 in convex_atom:
+					idxs = [t1,t2,tt2]
+					if [tt2,t2,t1] not in grow_index:
+						grow_index.append(idxs)
+		if t1 not in convex_atom and t2 in convex_atom:
+			bond2 = t1_atom.GetBonds()
+			bb = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
+			if len(bb) > 0:
+				tt1 = bb[0].GetBeginAtomIdx()
+				tt2 = bb[0].GetEndAtomIdx()
+				if tt1 != t1 and tt1 != t2 and tt1 in convex_atom:
+					idxs = [t2,t1,tt1]
+					if [tt1,t1,t2] not in grow_index:
+						grow_index.append(idxs)
+				if tt2 != t1 and tt2 != t2 and tt2 in convex_atom:
+					idxs = [t2,t1,tt2]
+					if [tt2,t1,t2] not in grow_index:
+						grow_index.append(idxs)
+
+		#Two atom in the middle
+		if t1 not in convex_atom and t2 not in convex_atom:
+			if all([True if n.IsInRing() else False for n in t1_atom.GetNeighbors() ]) and all([True if n.IsInRing() else False for n in t2_atom.GetNeighbors() ]):
+				bond1 = t1_atom.GetBonds()
+				bond2 = t2_atom.GetBonds()
+				bb1 = [b for b in bond1 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
+				bb2 = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
+				if len(bb1) > 0 and len(bb2) > 0:
+					bond1_idx = bb1[0].GetIdx()
+					bond2_idx = bb2[0].GetIdx()
+					tt1_ = [bb1[0].GetBeginAtomIdx(), bb1[0].GetEndAtomIdx()]
+					tt1_.remove(t1)
+					tt2_ = [bb2[0].GetBeginAtomIdx(), bb2[0].GetEndAtomIdx()]
+					tt2_.remove(t2)
+					tmp = tt1_ + tt2_
+					tmp2 = [s for s in tmp if s in convex_atom]
+					if len(tmp2) == 2:
+						idxs = [tmp2[0]] + [t1,t2] + [tmp2[1]]
+						grow_index.append(idxs)
+
+					#Four atom in the middle
+					if (tt1_[0] not in convex_atom) and (tt2_[0] not in convex_atom):
+						bondn1 = atoms[tt1_[0]].GetBonds()
+						bondn2 = atoms[tt2_[0]].GetBonds()
+						bbb1 = [b for b in bondn1 if b.GetIdx() != bond1_idx and b.GetIdx() in convex_bond]
+						bbb2 = [b for b in bondn2 if b.GetIdx() != bond2_idx and b.GetIdx() in convex_bond]
+						if len(bbb1) > 0 and len(bbb2) > 0:
+							ttt1_ = [bbb1[0].GetBeginAtomIdx(), bbb1[0].GetEndAtomIdx()]
+							ttt2_ = [bbb2[0].GetBeginAtomIdx(), bbb2[0].GetEndAtomIdx()]
+							ttt1_.remove(tt1_[0])
+							ttt2_.remove(tt2_[0])
+
+							if (ttt1_[0] in convex_atom) and (ttt2_[0] in convex_atom):
+								idxs = ttt1_ + tt1_ + [t1,t2] + tt2_ + ttt2_
+								grow_index.append(idxs)
+						
+		if t1 not in convex_atom and t2 not in convex_atom:
+			bond1 = t1_atom.GetBonds()
+			bond2 = t2_atom.GetBonds()
+			bb1 = [b for b in bond1 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
+			bb2 = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
+			if len(bb1) > 0 and len(bb2) > 0:
+				bond1_idx = bb1[0].GetIdx()
+				bond2_idx = bb2[0].GetIdx()
+				tt1_ = [bb1[0].GetBeginAtomIdx(), bb1[0].GetEndAtomIdx()]
+				tt1_.remove(t1)
+				tt2_ = [bb2[0].GetBeginAtomIdx(), bb2[0].GetEndAtomIdx()]
+				tt2_.remove(t2)
+				tmp = tt1_ + tt2_
+				tmp2 = [s for s in tmp if s in convex_atom]
+				#Three atom in the middle
+				if (tt1_[0] not in convex_atom) and (tt2_[0] in convex_atom):
+					bondn1 = atoms[tt1_[0]].GetBonds()
+					bbb1 = [b for b in bondn1 if b.GetIdx() != bond1_idx and b.GetIdx() in convex_bond]
+					if len(bbb1) > 0:
+						ttt1_ = [bbb1[0].GetBeginAtomIdx(), bbb1[0].GetEndAtomIdx()]
+						ttt1_.remove(tt1_[0])
+						if (ttt1_[0] in convex_atom):
+							idxs = ttt1_ + tt1_ + [t1,t2] + tt2_
+							grow_index.append(idxs)
+				elif (tt1_[0] in convex_atom) and (tt2_[0] not in convex_atom):
+					bondn1 = atoms[tt2_[0]].GetBonds()
+					bbb1 = [b for b in bondn1 if b.GetIdx() != bond1_idx and b.GetIdx() in convex_bond]
+					if len(bbb1) > 0:
+						ttt2_ = [bbb1[0].GetBeginAtomIdx(), bbb1[0].GetEndAtomIdx()]
+						ttt2_.remove(tt2_[0])
+						if (ttt2_[0] in convex_atom):
+							idxs = ttt2_ + tt2_ + [t2,t1] + tt1_
+							idxs_test = tt1_ + [t1,t2] + tt2_ + ttt2_
+							if idxs_test not in grow_index:
+								grow_index.append(idxs)
+
+	grow_index = sorted(grow_index,key=lambda x:len(x),reverse=True)
+
+	for i, each in enumerate(grow_index):
+		if len(each) == 6:
+			test_list = grow_index[i+1:]
+			for j, test in enumerate(test_list):
+				if each[0] in test or each[-1] in test:
+					grow_index.remove(test)
+	
+	grow_index = [each for each in grow_index \
+		          if all([True if atoms[idx].GetSymbol() =='C' else False for idx in each])]
+	return grow_index
+
 def angle_between_plane(n1,n2):
     dot_product = np.dot(n1,n2)
     magnitude_n1 =  np.linalg.norm(n1)
@@ -378,57 +515,6 @@ def arylbond_combine(mol1,mol2):
 		final = copy.deepcopy(connected_m)
 		combined_mols.append(final)
 		
-
-	"""
-	## Five ring
-	pair_five_reduce = []
-	for i, p5 in enumerate(pair_five):
-		pv1 = p5[0]
-		pv2 = p5[1]
-		pv1_h = [atoms1[idx].GetTotalNumHs() for idx in pv1]
-		pv2_h = [atoms2[idx].GetTotalNumHs() for idx in pv2]
-		if (pv1_h[0]==pv2_h[0]) and (pv1_h[-1]==pv2_h[-1]):
-			pair_five_reduce.append([pv1,pv2])
-		elif (pv1_h[0]!=pv2_h[0]) and (pv1_h[-1]!=pv2_h[-1]) and (pv1_h[0]==pv2_h[-1]) and (pv1_h[-1]==pv2_h[0]):
-			pv2.reverse()
-			pair_five_reduce.append([pv1,pv2])
-
-	m_comb = Chem.CombineMols(mol1,mol2)
-	for i, p5 in enumerate(pair_five_reduce):
-		m_comb_dup = copy.deepcopy(m_comb)
-		pv1 = p5[0]
-		pv2 = [p+len(atoms2) for p in p5[1]]
-		a1 = pv1[0]
-		a2 = pv2[0]
-		b1 = pv1[-1]
-		b2 = pv2[-1]
-		edcombo = Chem.EditableMol(m_comb_dup)
-		if atoms_comb[a1].GetTotalNumHs()==1 and atoms_comb[a2].GetTotalNumHs() == 1:
-			edcombo.AddBond(a1,a2,order=Chem.rdchem.BondType.SINGLE)
-		elif atoms_comb[a1].GetTotalNumHs()==2 and atoms_comb[a2].GetTotalNumHs() == 2:
-			edcombo.AddBond(a1,a2,order=Chem.rdchem.BondType.DOUBLE)
-		if atoms_comb[b1].GetTotalNumHs()==1 and atoms_comb[b2].GetTotalNumHs() == 1:
-			edcombo.AddBond(b1,b2,order=Chem.rdchem.BondType.SINGLE)
-		elif atoms_comb[b1].GetTotalNumHs()==2 and atoms_comb[b2].GetTotalNumHs() == 2:
-			edcombo.AddBond(b1,b2,order=Chem.rdchem.BondType.DOUBLE)
-		connected_m = edcombo.GetMol()
-		connected_m = AllChem.AddHs(connected_m)
-
-		atoms_m = connected_m.GetAtoms()
-		
-		#Remove hydrogens
-		hs_remove = []
-		for idx in [a1,a2,b1,b2]:
-			h_idx = max([n.GetIdx() for n in atoms_m[idx].GetNeighbors() if n.GetSymbol() == 'H'])
-			hs_remove.append(h_idx)
-		hs_remove = list(sorted(set(hs_remove), reverse=True))
-		edcombo2 = Chem.EditableMol(connected_m)
-		[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
-		connected_m = edcombo2.GetMol()
-		#Plot_2Dmol(connected_m,pngfilename='test_5_%d.png' % i)
-		final = copy.deepcopy(connected_m)
-		combined_mols.append(final)
-	"""
 	combined_mols_smi = [AllChem.MolToSmiles(mol) for mol in combined_mols]
 	combined_mols_smi_set = list(set(combined_mols_smi))
 	print(combined_mols_smi_set)
@@ -513,142 +599,7 @@ def convex_bond_atom(m):
 
 	return convex_bond_idx, convex_atom_idx
 
-def Find_Vertex_v2(m):
 
-	#m should have explicit hydrogens
-	m = AllChem.AddHs(m)
-	m = AllChem.RemoveHs(m)
-
-	convex_bond, convex_atom = convex_bond_atom(m)
-	
-	grow_index = []
-	atoms = m.GetAtoms()
-	bonds = m.GetBonds()
-
-	for bond_idx in convex_bond:
-		bond = bonds[bond_idx]
-		t1 = bond.GetBeginAtomIdx()
-		t2 = bond.GetEndAtomIdx()
-		t1_atom = bond.GetBeginAtom()
-		t2_atom = bond.GetEndAtom()
-		#Directly bonded
-		if t1 in convex_atom and t2 in convex_atom:
-			idxs = [t1,t2]
-			grow_index.append(idxs)
-		#One atom in the middle
-		if t1 in convex_atom and t2 not in convex_atom:
-			bond2 = t2_atom.GetBonds()
-			bb = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
-			if len(bb) > 0:
-				tt1 = bb[0].GetBeginAtomIdx()
-				tt2 = bb[0].GetEndAtomIdx()
-				if tt1 != t1 and tt1 != t2 and tt1 in convex_atom:
-					idxs = [t1,t2,tt1]
-					if [tt1,t2,t1] not in grow_index:
-						grow_index.append(idxs)
-				if tt2 != t1 and tt2 != t2 and tt2 in convex_atom:
-					idxs = [t1,t2,tt2]
-					if [tt2,t2,t1] not in grow_index:
-						grow_index.append(idxs)
-		if t1 not in convex_atom and t2 in convex_atom:
-			bond2 = t1_atom.GetBonds()
-			bb = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
-			if len(bb) > 0:
-				tt1 = bb[0].GetBeginAtomIdx()
-				tt2 = bb[0].GetEndAtomIdx()
-				if tt1 != t1 and tt1 != t2 and tt1 in convex_atom:
-					idxs = [t2,t1,tt1]
-					if [tt1,t1,t2] not in grow_index:
-						grow_index.append(idxs)
-				if tt2 != t1 and tt2 != t2 and tt2 in convex_atom:
-					idxs = [t2,t1,tt2]
-					if [tt2,t1,t2] not in grow_index:
-						grow_index.append(idxs)
-
-		#Two atom in the middle
-		if t1 not in convex_atom and t2 not in convex_atom:
-			if all([True if n.IsInRing() else False for n in t1_atom.GetNeighbors() ]) and all([True if n.IsInRing() else False for n in t2_atom.GetNeighbors() ]):
-				bond1 = t1_atom.GetBonds()
-				bond2 = t2_atom.GetBonds()
-				bb1 = [b for b in bond1 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
-				bb2 = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
-				if len(bb1) > 0 and len(bb2) > 0:
-					bond1_idx = bb1[0].GetIdx()
-					bond2_idx = bb2[0].GetIdx()
-					tt1_ = [bb1[0].GetBeginAtomIdx(), bb1[0].GetEndAtomIdx()]
-					tt1_.remove(t1)
-					tt2_ = [bb2[0].GetBeginAtomIdx(), bb2[0].GetEndAtomIdx()]
-					tt2_.remove(t2)
-					tmp = tt1_ + tt2_
-					tmp2 = [s for s in tmp if s in convex_atom]
-					if len(tmp2) == 2:
-						idxs = [tmp2[0]] + [t1,t2] + [tmp2[1]]
-						grow_index.append(idxs)
-
-					#Four atom in the middle
-					if (tt1_[0] not in convex_atom) and (tt2_[0] not in convex_atom):
-						bondn1 = atoms[tt1_[0]].GetBonds()
-						bondn2 = atoms[tt2_[0]].GetBonds()
-						bbb1 = [b for b in bondn1 if b.GetIdx() != bond1_idx and b.GetIdx() in convex_bond]
-						bbb2 = [b for b in bondn2 if b.GetIdx() != bond2_idx and b.GetIdx() in convex_bond]
-						if len(bbb1) > 0 and len(bbb2) > 0:
-							ttt1_ = [bbb1[0].GetBeginAtomIdx(), bbb1[0].GetEndAtomIdx()]
-							ttt2_ = [bbb2[0].GetBeginAtomIdx(), bbb2[0].GetEndAtomIdx()]
-							ttt1_.remove(tt1_[0])
-							ttt2_.remove(tt2_[0])
-
-							if (ttt1_[0] in convex_atom) and (ttt2_[0] in convex_atom):
-								idxs = ttt1_ + tt1_ + [t1,t2] + tt2_ + ttt2_
-								grow_index.append(idxs)
-						
-		if t1 not in convex_atom and t2 not in convex_atom:
-			bond1 = t1_atom.GetBonds()
-			bond2 = t2_atom.GetBonds()
-			bb1 = [b for b in bond1 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
-			bb2 = [b for b in bond2 if b.GetIdx() != bond_idx and b.GetIdx() in convex_bond]
-			if len(bb1) > 0 and len(bb2) > 0:
-				bond1_idx = bb1[0].GetIdx()
-				bond2_idx = bb2[0].GetIdx()
-				tt1_ = [bb1[0].GetBeginAtomIdx(), bb1[0].GetEndAtomIdx()]
-				tt1_.remove(t1)
-				tt2_ = [bb2[0].GetBeginAtomIdx(), bb2[0].GetEndAtomIdx()]
-				tt2_.remove(t2)
-				tmp = tt1_ + tt2_
-				tmp2 = [s for s in tmp if s in convex_atom]
-				#Three atom in the middle
-				if (tt1_[0] not in convex_atom) and (tt2_[0] in convex_atom):
-					bondn1 = atoms[tt1_[0]].GetBonds()
-					bbb1 = [b for b in bondn1 if b.GetIdx() != bond1_idx and b.GetIdx() in convex_bond]
-					if len(bbb1) > 0:
-						ttt1_ = [bbb1[0].GetBeginAtomIdx(), bbb1[0].GetEndAtomIdx()]
-						ttt1_.remove(tt1_[0])
-						if (ttt1_[0] in convex_atom):
-							idxs = ttt1_ + tt1_ + [t1,t2] + tt2_
-							grow_index.append(idxs)
-				elif (tt1_[0] in convex_atom) and (tt2_[0] not in convex_atom):
-					bondn1 = atoms[tt2_[0]].GetBonds()
-					bbb1 = [b for b in bondn1 if b.GetIdx() != bond1_idx and b.GetIdx() in convex_bond]
-					if len(bbb1) > 0:
-						ttt2_ = [bbb1[0].GetBeginAtomIdx(), bbb1[0].GetEndAtomIdx()]
-						ttt2_.remove(tt2_[0])
-						if (ttt2_[0] in convex_atom):
-							idxs = ttt2_ + tt2_ + [t2,t1] + tt1_
-							idxs_test = tt1_ + [t1,t2] + tt2_ + ttt2_
-							if idxs_test not in grow_index:
-								grow_index.append(idxs)
-
-	grow_index = sorted(grow_index,key=lambda x:len(x),reverse=True)
-
-	for i, each in enumerate(grow_index):
-		if len(each) == 6:
-			test_list = grow_index[i+1:]
-			for j, test in enumerate(test_list):
-				if each[0] in test or each[-1] in test:
-					grow_index.remove(test)
-	
-	grow_index = [each for each in grow_index \
-		          if all([True if atoms[idx].GetSymbol() =='C' else False for idx in each])]
-	return grow_index
 
 
 def Propagate_v2(main,vertx,six_ring=False,five_ring=False,nbfive=0):

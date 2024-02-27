@@ -9,7 +9,7 @@ from copy import deepcopy
 from rdkit import Chem
 from rdkit.Chem import AllChem, Draw, Descriptors
 
-from .Hydrocarbons_Builder import convex_bond_atom
+from .Hydrocarbons_Builder import *
 from .Run_MD import ReaxFFminimize 
 from .Utility import Plot_2Dmol, Embedfrom2Dto3D_conformers, Embedfrom2Dto3D, MMFF94s_energy
 from .Heteroatom_Exchanger import *
@@ -18,6 +18,374 @@ def molwith_idx(mol):
 	for atom in mol.GetAtoms():
 		atom.SetAtomMapNum(atom.GetIdx())
 	return mol
+
+def Combine_Two_double(mol1,mol2,ring_size=6):
+	mol_list = []
+	edge1 = Find_Vertex_v2(mol1)
+	edge2 = Find_Vertex_v2(mol2)
+
+	for e1 in edge1:
+		for e2 in edge2:
+			if (len(e1)+len(e2) <= ring_size):
+				linker_size = ring_size - (len(e1)+len(e2))
+				if linker_size == 0:
+					#Direct connection
+					a1 = int(e1[0])
+					a2 = int(e1[-1])
+					b1 = int(e2[0]+len(mol1.GetAtoms()))
+					b2 = int(e2[-1]+len(mol1.GetAtoms()))
+					mol_comb = Chem.CombineMols(mol1,mol2)
+					edcombo = Chem.EditableMol(mol_comb)
+					edcombo.AddBond(a1,b1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(a2,b2,order=Chem.rdchem.BondType.SINGLE)
+					connected_m = edcombo.GetMol()
+					connected_m = AllChem.AddHs(connected_m)  
+					atoms_m = connected_m.GetAtoms()
+					hs_remove = []
+					hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_remove = list(sorted([hs_a1,hs_a2,hs_b1,hs_b2],reverse=True))
+					edcombo2 = Chem.EditableMol(connected_m)
+					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+					connected_m = edcombo2.GetMol()
+					connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					mol_list.append(connected_m)
+
+				elif linker_size == 1:
+					#Insert a single C
+					#Case1
+					a1 = int(e1[0])
+					a2 = int(e1[-1])
+					b1 = int(e2[0]+len(mol1.GetAtoms()))
+					b2 = int(e2[-1]+len(mol1.GetAtoms()))
+					mol_comb = Chem.CombineMols(mol1,mol2)
+					linker_mol = AllChem.MolFromSmiles('C')
+					linker_idx = [l.GetIdx() for l in linker_mol.GetAtoms()]
+					c1 = int(linker_idx[0]+len(mol_comb.GetAtoms()))
+					c2 = int(linker_idx[-1]+len(mol_comb.GetAtoms()))
+					mol_comb2 = Chem.CombineMols(mol_comb,linker_mol)
+					edcombo = Chem.EditableMol(mol_comb2)
+					edcombo.AddBond(a1,c1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(c2,b1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(a2,b2,order=Chem.rdchem.BondType.SINGLE)
+					connected_m = edcombo.GetMol()
+					connected_m = AllChem.AddHs(connected_m)  
+					atoms_m = connected_m.GetAtoms()
+					hs_remove = []
+					hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					if len(linker_idx) > 1:
+						hs_c1 = max([n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c2 = max([n.GetIdx() for n in atoms_m[c2].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c = [hs_c1,hs_c2]
+					else:
+						hs_c = [n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+					hs_c.append(hs_a1)
+					hs_c.append(hs_a2)
+					hs_c.append(hs_b1)
+					hs_c.append(hs_b2)
+					hs_remove = list(sorted(hs_c,reverse=True))
+					edcombo2 = Chem.EditableMol(connected_m)
+					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+					connected_m = edcombo2.GetMol()
+					connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					mol_list.append(connected_m)
+
+					#Insert a single C
+					#Case2
+					a1 = int(e1[0])
+					a2 = int(e1[-1])
+					b1 = int(e2[0]+len(mol1.GetAtoms()))
+					b2 = int(e2[-1]+len(mol1.GetAtoms()))
+					mol_comb = Chem.CombineMols(mol1,mol2)
+					linker_mol = AllChem.MolFromSmiles('C')
+					linker_idx = [l.GetIdx() for l in linker_mol.GetAtoms()]
+					c1 = int(linker_idx[0]+len(mol_comb.GetAtoms()))
+					c2 = int(linker_idx[-1]+len(mol_comb.GetAtoms()))
+					mol_comb2 = Chem.CombineMols(mol_comb,linker_mol)
+					#Plot_2Dmol_c(mol_with_atom_index(mol_comb2),ha=list(set([a1,a2,b1,b2])))
+					edcombo = Chem.EditableMol(mol_comb2)
+					edcombo.AddBond(a1,b1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(a2,c1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(c2,b2,order=Chem.rdchem.BondType.SINGLE)
+					connected_m = edcombo.GetMol()
+					connected_m = AllChem.AddHs(connected_m)  
+					atoms_m = connected_m.GetAtoms()
+					hs_remove = []
+					hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					if len(linker_idx) > 1:
+						hs_c1 = max([n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c2 = max([n.GetIdx() for n in atoms_m[c2].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c = [hs_c1,hs_c2]
+					else:
+						hs_c = [n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+					hs_c.append(hs_a1)
+					hs_c.append(hs_a2)
+					hs_c.append(hs_b1)
+					hs_c.append(hs_b2)
+					hs_remove = list(sorted(hs_c,reverse=True))
+					edcombo2 = Chem.EditableMol(connected_m)
+					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+					connected_m = edcombo2.GetMol()
+					connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					mol_list.append(connected_m)
+
+				elif linker_size == 2:
+					#Insert a single C=C
+					#Case1
+					a1 = int(e1[0])
+					a2 = int(e1[-1])
+					b1 = int(e2[0]+len(mol1.GetAtoms()))
+					b2 = int(e2[-1]+len(mol1.GetAtoms()))
+					mol_comb = Chem.CombineMols(mol1,mol2)
+					linker_mol = AllChem.MolFromSmiles('C=C')
+					linker_idx = [l.GetIdx() for l in linker_mol.GetAtoms()]
+					c1 = int(linker_idx[0]+len(mol_comb.GetAtoms()))
+					c2 = int(linker_idx[-1]+len(mol_comb.GetAtoms()))
+					mol_comb2 = Chem.CombineMols(mol_comb,linker_mol)
+					edcombo = Chem.EditableMol(mol_comb2)
+					edcombo.AddBond(a1,c1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(c2,b1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(a2,b2,order=Chem.rdchem.BondType.SINGLE)
+					connected_m = edcombo.GetMol()
+					connected_m = AllChem.AddHs(connected_m)  
+					atoms_m = connected_m.GetAtoms()
+					hs_remove = []
+					hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					if len(linker_idx) > 1:
+						hs_c1 = max([n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c2 = max([n.GetIdx() for n in atoms_m[c2].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c = [hs_c1,hs_c2]
+					else:
+						hs_c = [n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+					hs_c.append(hs_a1)
+					hs_c.append(hs_a2)
+					hs_c.append(hs_b1)
+					hs_c.append(hs_b2)
+					hs_remove = list(sorted(hs_c,reverse=True))
+					edcombo2 = Chem.EditableMol(connected_m)
+					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+					connected_m = edcombo2.GetMol()
+					connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					mol_list.append(connected_m)
+
+					#Insert a single C=C
+					#Case2
+					a1 = int(e1[0])
+					a2 = int(e1[-1])
+					b1 = int(e2[0]+len(mol1.GetAtoms()))
+					b2 = int(e2[-1]+len(mol1.GetAtoms()))
+					mol_comb = Chem.CombineMols(mol1,mol2)
+					linker_mol = AllChem.MolFromSmiles('C=C')
+					linker_idx = [l.GetIdx() for l in linker_mol.GetAtoms()]
+					c1 = int(linker_idx[0]+len(mol_comb.GetAtoms()))
+					c2 = int(linker_idx[-1]+len(mol_comb.GetAtoms()))
+					mol_comb2 = Chem.CombineMols(mol_comb,linker_mol)
+					edcombo = Chem.EditableMol(mol_comb2)
+					edcombo.AddBond(a1,b1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(a2,c1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(c2,b2,order=Chem.rdchem.BondType.SINGLE)
+					connected_m = edcombo.GetMol()
+					connected_m = AllChem.AddHs(connected_m)  
+					atoms_m = connected_m.GetAtoms()
+					hs_remove = []
+					hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					if len(linker_idx) > 1:
+						hs_c1 = max([n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c2 = max([n.GetIdx() for n in atoms_m[c2].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c = [hs_c1,hs_c2]
+					else:
+						hs_c = [n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+					hs_c.append(hs_a1)
+					hs_c.append(hs_a2)
+					hs_c.append(hs_b1)
+					hs_c.append(hs_b2)
+					hs_remove = list(sorted(hs_c,reverse=True))
+					edcombo2 = Chem.EditableMol(connected_m)
+					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+					connected_m = edcombo2.GetMol()
+					connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					mol_list.append(connected_m)
+
+					#Insert two C and C
+					a1 = int(e1[0])
+					a2 = int(e1[-1])
+					b1 = int(e2[0]+len(mol1.GetAtoms()))
+					b2 = int(e2[-1]+len(mol1.GetAtoms()))
+					mol_comb = Chem.CombineMols(mol1,mol2)
+					linker_mol1 = AllChem.MolFromSmiles('C')
+					linker_idx1 = [l.GetIdx() for l in linker_mol1.GetAtoms()]
+					linker_mol2 = AllChem.MolFromSmiles('C')
+					linker_idx2 = [l.GetIdx() for l in linker_mol2.GetAtoms()]
+					c1 = int(linker_idx1[0]+len(mol_comb.GetAtoms()))
+					c2 = int(linker_idx1[-1]+len(mol_comb.GetAtoms()))
+					mol_comb2 = Chem.CombineMols(mol_comb,linker_mol1)
+					c3 = int(linker_idx2[0]+len(mol_comb2.GetAtoms()))
+					c4 = int(linker_idx2[-1]+len(mol_comb2.GetAtoms()))       
+					mol_comb3 = Chem.CombineMols(mol_comb2,linker_mol2)
+					#Plot_2Dmol_c(mol_with_atom_index(mol_comb2),ha=list(set([a1,a2,b1,b2])))
+					edcombo = Chem.EditableMol(mol_comb3)
+					edcombo.AddBond(a1,c1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(c2,b1,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(a2,c3,order=Chem.rdchem.BondType.SINGLE)
+					edcombo.AddBond(c4,b2,order=Chem.rdchem.BondType.SINGLE)
+					connected_m = edcombo.GetMol()
+					connected_m = AllChem.AddHs(connected_m)  
+					atoms_m = connected_m.GetAtoms()
+					hs_remove = []
+					hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					if len(linker_idx1) > 1:
+						hs_c1 = max([n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c2 = max([n.GetIdx() for n in atoms_m[c2].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_ca = [hs_c1,hs_c2]
+					else:
+						hs_ca = [n.GetIdx() for n in atoms_m[c1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+
+					if len(linker_idx2) > 1:
+						hs_c3 = max([n.GetIdx() for n in atoms_m[c3].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_c4 = max([n.GetIdx() for n in atoms_m[c4].GetNeighbors() if n.GetSymbol() == 'H'])
+						hs_cb = [hs_c3,hs_c4]
+					else:
+						hs_cb = [n.GetIdx() for n in atoms_m[c3].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+					hs_c = [hs_a1,hs_a2,hs_b1,hs_b2]+hs_ca+hs_cb
+					hs_remove = list(sorted(hs_c,reverse=True))
+					edcombo2 = Chem.EditableMol(connected_m)
+					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+					connected_m = edcombo2.GetMol()
+					connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					mol_list.append(connected_m)
+
+	return mol_list
+
+
+def Combine_Two_single(mol1,mol2, linker_sm='CCOCC', label=0):
+
+	convex_bond, convex_atom = convex_bond_atom(mol1)
+	atoms = mol1.GetAtoms()
+	#avail_atom_idx_1 = [idx for idx in convex_atom if atoms[idx].IsInRingSize(6) or (atoms[idx].IsInRingSize(5) and atoms[idx].GetTotalNumHs() == 1)]
+	avail_atom_idx_1 = [idx for idx in convex_atom if atoms[idx].GetTotalNumHs() >= 1]
+
+	convex_bond2, convex_atom2 = convex_bond_atom(mol2)
+	atoms2 = mol2.GetAtoms()
+	#avail_atom_idx_2 = [idx for idx in convex_atom2 if atoms2[idx].IsInRingSize(6) or (atoms2[idx].IsInRingSize(5) and atoms2[idx].GetTotalNumHs() == 1)]
+	avail_atom_idx_2 = [idx for idx in convex_atom2 if atoms2[idx].GetTotalNumHs() >= 1]
+	
+	avail_atom_idx_2 = np.array(avail_atom_idx_2) + len(atoms)
+
+	m_comb = Chem.CombineMols(mol1,mol2)
+
+	series = []
+	mol_list = []
+	smi_list = []
+	bonded_edge = []
+
+	if linker_sm == '' : #Direct connection
+		for a1 in avail_atom_idx_1:
+			for a2 in avail_atom_idx_2:
+				m_comb = Chem.CombineMols(mol1,mol2)
+				edcombo = Chem.EditableMol(m_comb)
+				a1 = int(a1)
+				a2 = int(a2)
+				edcombo.AddBond(a1,a2,order=Chem.rdchem.BondType.SINGLE)
+				bonded_edge.append([a1,a2])
+				connected_m = edcombo.GetMol()
+				connected_m = AllChem.AddHs(connected_m)
+				atoms_m = connected_m.GetAtoms()
+				hs_remove = []
+				hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+				hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+				hs_remove = list(sorted([hs_a1,hs_a2],reverse=True))
+				edcombo2 = Chem.EditableMol(connected_m)
+				[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+				connected_m = edcombo2.GetMol()
+				check = edcombo2.GetMol()
+				params = AllChem.ETKDGv3()
+				params.useSmallRingTorsions = True
+				check = Embedfrom2Dto3D(check)
+				smi = AllChem.MolToSmiles(check)
+				if smi not in smi_list:
+					mol_list.append(check)
+					smi_list.append(smi)
+
+	else:
+		linker = AllChem.MolFromSmiles(linker_sm)
+		linker_indx = np.array([atom.GetIdx() for atom in linker.GetAtoms()]) + len(m_comb.GetAtoms())
+		linker_indx = [int(l) for l in linker_indx]
+		
+		for a1 in avail_atom_idx_1:
+			for a2 in avail_atom_idx_2:		
+				m_comb2 = Chem.CombineMols(m_comb,linker)
+				edcombo = Chem.EditableMol(m_comb2)
+				a1 = int(a1)
+				a2 = int(a2)
+				b1 = int(linker_indx[0])
+				b2 = int(linker_indx[-1])
+				#series.append([a1,a2,b1,b2])
+				bonded_edge.append([a1,a2])
+
+				edcombo.AddBond(a1,b1,order=Chem.rdchem.BondType.SINGLE)
+				edcombo.AddBond(a2,b2,order=Chem.rdchem.BondType.SINGLE)
+				connected_m = edcombo.GetMol()
+				connected_m = AllChem.AddHs(connected_m)
+				atoms_m = connected_m.GetAtoms()
+				hs_remove = []
+				hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
+				hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
+				if len(linker_indx) > 1:
+					hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
+					hs_b = [hs_b1,hs_b2]
+				else:
+					hs_b = [n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
+				hs_b.append(hs_a1)
+				hs_b.append(hs_a2)
+				hs_remove = list(sorted(hs_b,reverse=True))
+				edcombo2 = Chem.EditableMol(connected_m)
+				[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
+				connected_m = edcombo2.GetMol()
+				check = edcombo2.GetMol()
+				
+				#check rdmolops.RemoveStereochemistry()
+				#heteroatom : ReplaceCore()
+				params = AllChem.ETKDGv3()
+				params.useSmallRingTorsions = True
+				check = Embedfrom2Dto3D(check)
+				smi = AllChem.MolToSmiles(check)
+				if smi not in smi_list:
+					mol_list.append(check)
+					smi_list.append(smi)
+
+	return mol_list, bonded_edge
+
+
 
 def MMFFs_3Dconstruct(mol):
 
@@ -33,7 +401,6 @@ def MMFFs_3Dconstruct(mol):
 def Get_combine(pdb_file, path, link_sms, base_num=0, estimate='smi'):
 
 	ms = PDBImageFileToMols(pdb_file)
-
 	for i in range(1):
 		if estimate =='energy':
 			mol = Combine_MMFF94s(ms)
@@ -751,87 +1118,6 @@ def Combine_MD(ms, linker_sm='CCOCC', label=0):
 
 	#Count the number of bonds added to each molecule	
 
-
-# Revise
-def Combine_Two(mol1,mol2, linker_sm='CCOCC', label=0):
-	#ms is the list of mol objects
-	#shuffle the molecules before combine
-	#np.random.shuffle(ms)
-	add_crosslink = np.zeros(2)
-	seed = mol1
-	index_check = []
-	count = np.zeros(2)
-	convex_bond, convex_atom = convex_bond_atom(seed)
-	atoms = seed.GetAtoms()
-	avail_atom_idx_0 = [idx for idx in convex_atom if atoms[idx].IsInRing()]
-	index_check.append(avail_atom_idx_0)
-
-
-
-	seed = AllChem.RemoveHs(seed)
-	convex_bond, convex_atom = convex_bond_atom(seed)
-	atoms = seed.GetAtoms()
-	avail_atom_idx_1 = [idx for idx in convex_atom if atoms[idx].IsInRingSize(6) or (atoms[idx].IsInRingSize(5) and atoms[idx].GetTotalNumHs() == 1)]
-
-	atoms2 = mol2.GetAtoms()
-	convex_bond2, convex_atom2 = convex_bond_atom(mol2)
-	avail_atom_idx_2 = [idx for idx in convex_atom2 if atoms2[idx].IsInRingSize(6) or (atoms2[idx].IsInRingSize(5) and atoms2[idx].GetTotalNumHs() == 1)]
-	avail_atom_idx_2 = np.array(avail_atom_idx_2) + len(atoms)
-	index_check.append(list(avail_atom_idx_2))
-
-	m_comb = Chem.CombineMols(seed,mol2)
-	linker = AllChem.MolFromSmiles(linker_sm)
-	linker_indx = np.array([atom.GetIdx() for atom in linker.GetAtoms()]) + len(m_comb.GetAtoms())
-	linker_indx = [int(l) for l in linker_indx]
-	
-	series = []
-	#print(len(avail_atom_idx_1)*len(avail_atom_idx_2))
-	mol_list = []
-	smi_list = []
-
-	for a1 in avail_atom_idx_1:
-		for a2 in avail_atom_idx_2:				
-			m_comb2 = Chem.CombineMols(m_comb,linker)
-			edcombo = Chem.EditableMol(m_comb2)
-			a1 = int(a1)
-			a2 = int(a2)
-			b1 = int(linker_indx[0])
-			b2 = int(linker_indx[-1])
-			series.append([a1,a2,b1,b2])
-				
-			edcombo.AddBond(a1,b1,order=Chem.rdchem.BondType.SINGLE)
-			edcombo.AddBond(a2,b2,order=Chem.rdchem.BondType.SINGLE)
-			connected_m = edcombo.GetMol()
-			connected_m = AllChem.AddHs(connected_m)
-			atoms_m = connected_m.GetAtoms()
-			hs_remove = []
-			hs_a1 = max([n.GetIdx() for n in atoms_m[a1].GetNeighbors() if n.GetSymbol() == 'H'])
-			hs_a2 = max([n.GetIdx() for n in atoms_m[a2].GetNeighbors() if n.GetSymbol() == 'H'])
-			if len(linker_indx) > 1:
-				hs_b1 = max([n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'])
-				hs_b2 = max([n.GetIdx() for n in atoms_m[b2].GetNeighbors() if n.GetSymbol() == 'H'])
-				hs_b = [hs_b1,hs_b2]
-			else:
-				hs_b = [n.GetIdx() for n in atoms_m[b1].GetNeighbors() if n.GetSymbol() == 'H'][:2]
-			hs_b.append(hs_a1)
-			hs_b.append(hs_a2)
-			hs_remove = list(sorted(hs_b,reverse=True))
-			edcombo2 = Chem.EditableMol(connected_m)
-			[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
-			connected_m = edcombo2.GetMol()
-			check = edcombo2.GetMol()
-			
-			#check rdmolops.RemoveStereochemistry()
-			#heteroatom : ReplaceCore()
-			params = AllChem.ETKDGv3()
-			params.useSmallRingTorsions = True
-			check = Embedfrom2Dto3D(check)
-			smi = AllChem.MolToSmiles(check)
-			if smi not in smi_list:
-				mol_list.append(check)
-				smi_list.append(smi)
-
-	return mol_list
 
 	#Count the number of bonds added to each molecule	
 

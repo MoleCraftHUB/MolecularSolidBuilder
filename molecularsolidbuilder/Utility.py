@@ -26,7 +26,6 @@ def SMItoPDBFile(smi,fname,mmb=False):
 	pdb_file = open(fname,'w')
 	pdb_file.write(pdb_string)
 	pdb_file.close()
-
 	return fname
 
 
