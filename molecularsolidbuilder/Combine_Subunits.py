@@ -50,9 +50,9 @@ def Combine_Two_double(mol1,mol2,ring_size=6):
 					edcombo2 = Chem.EditableMol(connected_m)
 					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
 					connected_m = edcombo2.GetMol()
-					connected_m = AllChem.AddHs(connected_m,addCoords=True)
-					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
-					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					#connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					#AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					#AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
 					mol_list.append(connected_m)
 
 				elif linker_size == 1:
@@ -94,9 +94,9 @@ def Combine_Two_double(mol1,mol2,ring_size=6):
 					edcombo2 = Chem.EditableMol(connected_m)
 					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
 					connected_m = edcombo2.GetMol()
-					connected_m = AllChem.AddHs(connected_m,addCoords=True)
-					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
-					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					#connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					#AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					#AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
 					mol_list.append(connected_m)
 
 					#Insert a single C
@@ -138,9 +138,9 @@ def Combine_Two_double(mol1,mol2,ring_size=6):
 					edcombo2 = Chem.EditableMol(connected_m)
 					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
 					connected_m = edcombo2.GetMol()
-					connected_m = AllChem.AddHs(connected_m,addCoords=True)
-					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
-					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					#connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					#AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					#AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
 					mol_list.append(connected_m)
 
 				elif linker_size == 2:
@@ -182,9 +182,9 @@ def Combine_Two_double(mol1,mol2,ring_size=6):
 					edcombo2 = Chem.EditableMol(connected_m)
 					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
 					connected_m = edcombo2.GetMol()
-					connected_m = AllChem.AddHs(connected_m,addCoords=True)
-					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
-					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					#connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					#AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					#AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
 					mol_list.append(connected_m)
 
 					#Insert a single C=C
@@ -225,9 +225,9 @@ def Combine_Two_double(mol1,mol2,ring_size=6):
 					edcombo2 = Chem.EditableMol(connected_m)
 					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
 					connected_m = edcombo2.GetMol()
-					connected_m = AllChem.AddHs(connected_m,addCoords=True)
-					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
-					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					#connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					#AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					#AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
 					mol_list.append(connected_m)
 
 					#Insert two C and C
@@ -278,9 +278,9 @@ def Combine_Two_double(mol1,mol2,ring_size=6):
 					edcombo2 = Chem.EditableMol(connected_m)
 					[ edcombo2.RemoveAtom(h_idx) for h_idx in hs_remove ]
 					connected_m = edcombo2.GetMol()
-					connected_m = AllChem.AddHs(connected_m,addCoords=True)
-					AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
-					AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
+					#connected_m = AllChem.AddHs(connected_m,addCoords=True)
+					#AllChem.EmbedMolecule(connected_m, useRandomCoords=False, useBasicKnowledge=False)
+					#AllChem.MMFFOptimizeMolecule(connected_m, mmffVariant='MMFF94s',nonBondedThresh=5000)
 					mol_list.append(connected_m)
 
 	return mol_list
